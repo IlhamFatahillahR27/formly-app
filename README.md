@@ -1,75 +1,99 @@
-# Nuxt Minimal Starter
+# Formly - Interactive Section Flow Form Maker
 
-Look at the [Nuxt documentation](https://nuxt.com/docs/getting-started/introduction) to learn more.
+**Formly** is a fullstack SaaS application built with Nuxt 4 and Supabase. It allows admins to create interactive surveys with section-based branching logic, manage questions via a visual canvas node diagram powered by `@vue-flow/core`, and analyze response reports with real-time charts.
 
-## Setup
+---
 
-Make sure to install dependencies:
+## 🚀 Tech Stack
+
+- **Frontend:** Nuxt 4, Nuxt UI (`@nuxt/ui`), Tailwind CSS, Vue 3
+- **Visual Node Canvas:** `@vue-flow/core` & `@vue-flow/additional-components`
+- **Backend & Database:** Supabase (PostgreSQL DDL, Supabase Auth, Row Level Security / RLS)
+- **Data Visualization:** Chart.js & `vue-chartjs`
+- **Type Safety:** Supabase auto-typed definitions (`types/supabase.ts`)
+- **Testing:** Vitest, `@nuxt/test-utils`, `@playwright/test`
+
+---
+
+## 🛠️ Getting Started
+
+### 1. Installation
+
+Install project dependencies:
 
 ```bash
-# npm
 npm install
-
-# pnpm
-pnpm install
-
-# yarn
-yarn install
-
-# bun
-bun install
 ```
 
-## Development Server
+### 2. Environment Configuration
 
-Start the development server on `http://localhost:3000`:
+Create a `.env` file in the root directory based on `.env.example`:
 
 ```bash
-# npm
+cp .env.example .env
+```
+
+Fill in your remote Supabase credentials:
+
+```env
+SUPABASE_URL=https://<your-project-id>.supabase.co
+SUPABASE_KEY=<your-anon-public-key>
+```
+
+### 3. Database Migration (Supabase Dashboard)
+
+To set up your Supabase PostgreSQL database tables, relationships, indexes, and Row Level Security (RLS) policies:
+
+1. Open your [Supabase Dashboard](https://supabase.com/dashboard).
+2. Navigate to **SQL Editor**.
+3. Copy and run the script in:
+   `supabase/migrations/20260811000000_init_formly_schema.sql`
+
+---
+
+## 📁 Project Directory Structure
+
+```text
+formly-app/
+├── app/
+│   ├── app.vue               # Root Nuxt UI App container
+│   └── pages/
+│       └── index.vue         # Landing page
+├── supabase/
+│   └── migrations/           # PostgreSQL DDL migrations & RLS policies
+├── types/
+│   └── supabase.ts           # Database TypeScript definitions
+├── .env.example              # Environment variables template
+├── nuxt.config.ts            # Nuxt 4 module configurations
+├── package.json              # Project dependencies & scripts
+├── requirement.md            # Software Requirements Specification (SRS)
+└── roadmap.md                # Master implementation roadmap
+```
+
+---
+
+## 💻 Development Commands
+
+Start the local development server:
+
+```bash
 npm run dev
-
-# pnpm
-pnpm dev
-
-# yarn
-yarn dev
-
-# bun
-bun run dev
 ```
 
-## Production
-
-Build the application for production:
+Prepare Nuxt types & build output:
 
 ```bash
-# npm
+npx nuxi prepare
+```
+
+Build for production:
+
+```bash
 npm run build
-
-# pnpm
-pnpm build
-
-# yarn
-yarn build
-
-# bun
-bun run build
 ```
 
-Locally preview production build:
+Preview production build:
 
 ```bash
-# npm
 npm run preview
-
-# pnpm
-pnpm preview
-
-# yarn
-yarn preview
-
-# bun
-bun run preview
 ```
-
-Check out the [deployment documentation](https://nuxt.com/docs/getting-started/deployment) for more information.

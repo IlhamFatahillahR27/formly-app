@@ -74,24 +74,24 @@ formly-app/
 **Goal:** Persiapan lingkungan pengembangan, konfigurasi Nuxt modules, migrasi database PostgreSQL Supabase lengkap dengan RLS, serta penyiapan pengujian.
 
 #### 📝 Tasks Checklist
-- [ ] **Dependencies Installation:**
+- [x] **Dependencies Installation:**
   - Install `@nuxtjs/supabase`, `@vue-flow/core`, `@vue-flow/additional-components`
   - Install `chart.js`, `vue-chartjs`, `papaparse` (untuk CSV export)
   - Install testing tools: `vitest`, `@nuxt/test-utils`, `@playwright/test`
-- [ ] **Nuxt Configuration:**
+- [x] **Nuxt Configuration:**
   - Update `nuxt.config.ts` untuk mendaftarkan `@nuxt/ui` dan `@nuxtjs/supabase`
   - Setup `.env` untuk `SUPABASE_URL` dan `SUPABASE_KEY`
-- [ ] **Database Migration (PostgreSQL DDL):**
+- [x] **Database Migration (PostgreSQL DDL):**
   - Jalankan script SQL migrasi tabel: `surveys`, `sections`, `questions`, `section_logic`, `responses`, `answers`
   - Buat kueri indeks untuk performa: `idx_questions_section_id`, `idx_sections_survey_id`, `idx_section_logic_survey_id`, dll.
   - Tambahkan foreign key circular safety (`fk_surveys_start_section`)
-- [ ] **Row Level Security (RLS):**
+- [x] **Row Level Security (RLS):**
   - Aktifkan RLS di 6 tabel
   - Kebijakan Public SELECT untuk survey & section yang `is_active = true`
   - Kebijakan Public INSERT untuk `responses` & `answers`
   - Kebijakan Admin ALL HANYA jika `auth.uid() = surveys.admin_id`
   - Immutability pada `responses` & `answers` (UPDATE & DELETE ditolak untuk semua role)
-- [ ] **Type Generation:**
+- [x] **Type Generation:**
   - Generate TypeScript types dari Supabase ke `types/supabase.ts`
 
 #### 🧪 Backend Testing Strategy

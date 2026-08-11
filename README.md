@@ -57,8 +57,17 @@ To set up your Supabase PostgreSQL database tables, relationships, indexes, and 
 formly-app/
 ├── app/
 │   ├── app.vue               # Root Nuxt UI App container
+│   ├── components/
+│   │   ├── builder/
+│   │   │   ├── FormLinearEditor.vue    # Linear section & question editor component
+│   │   │   ├── CanvasFlowDesigner.vue  # Vue Flow visual canvas designer component
+│   │   │   └── nodes/
+│   │   │       └── SectionNode.vue     # Custom Vue Flow node with collapsible sections
+│   │   └── survey/
+│   │       └── QuestionEditor.vue      # Question parameters, choices & logic rules editor
 │   ├── composables/
-│   │   └── useSurveys.ts     # Typed survey CRUD composable & start section initialization
+│   │   ├── useSurveys.ts               # Typed survey CRUD composable
+│   │   └── useSurveyBuilder.ts        # Single source of truth builder state & debounced position save
 │   ├── middleware/
 │   │   └── auth.ts           # Route guard middleware for /admin/*
 │   └── pages/
@@ -69,14 +78,14 @@ formly-app/
 │           └── survey/
 │               ├── create.vue        # Survey creation form page
 │               └── [id]/
-│                   ├── edit.vue      # Builder editor page (Phase 4 placeholder)
+│                   ├── edit.vue      # Dual-mode survey builder page
 │                   ├── analytics.vue # Analytics dashboard page (Phase 7 placeholder)
 │                   └── responses.vue # Survey responses & CSV export (Phase 7 placeholder)
 ├── supabase/
 │   └── migrations/           # PostgreSQL DDL migrations & RLS policies
 ├── tests/
-│   ├── unit/                 # Auth & survey service unit tests
-│   ├── component/            # Vue component state tests
+│   ├── unit/                 # Auth, survey service & builder logic unit tests
+│   ├── component/            # Vue component & dual-mode sync tests
 │   └── e2e/                  # Playwright E2E tests
 ├── types/
 │   └── supabase.ts           # Database TypeScript definitions
@@ -95,6 +104,13 @@ formly-app/
 - **Dashboard View (`/admin/dashboard`)**: Lists all surveys owned by the logged-in admin. Features real-time search filtering, status toggling (Active/Public vs Inactive/Draft), section and response counters, and action links to Builder, Analytics, Responses, and Delete confirmation modal.
 - **Survey Creation (`/admin/survey/create`)**: Form page to create a new survey. Automatically initializes an initial section ("Section 1") in `public.sections` and updates `public.surveys.start_section_id`.
 - **Survey Composable (`useSurveys.ts`)**: Provides typed helper methods for `fetchSurveys()`, `createSurvey()`, `toggleSurveyStatus()`, and `deleteSurvey()`.
+
+### Dual-Mode Survey Builder & Canvas Designer (Phase 4)
+- **Builder Editor View (`/admin/survey/[id]/edit`)**: Interactive survey authoring suite with synchronized dual views: **Form Linear Editor** and **Canvas Flow Designer**. Features a top toolbar with real-time saving status, survey metadata, and a **Preview** button opening `/survey/[id]?preview=true` in a new tab.
+- **Form Linear Editor (`FormLinearEditor.vue` & `QuestionEditor.vue`)**: Full management of survey sections (reordering, fallback "What Next?" next section selection, Start / End section flags) and questions (`short_text`, `long_text`, `multiple_choice`, `rating`). Includes dynamic option management for choice questions and an inline Logic Branching Rule editor.
+- **Canvas Flow Designer (`CanvasFlowDesigner.vue` & `SectionNode.vue`)**: Drag-and-drop visual node map powered by `@vue-flow/core` featuring custom collapsible `SectionNode` cards, interactive connecting edge arrows, zoom/pan controls, background grid, and mini-map.
+- **Debounced Position Saving & Logic Branching**: Automatically saves node canvas coordinates (`position_x`, `position_y`) with a 500ms debounce buffer on `onNodeDragStop`. Interactive line drawing connects choice options or sections to create/update `section_logic` branching rules and fallback section routes.
+- **Builder Composable (`useSurveyBuilder.ts`)**: Serves as the Single Source of Truth managing reactive survey state, section CRUD, question CRUD, section logic rules, and debounced database persistence.
 
 ---
 

@@ -171,20 +171,20 @@ formly-app/
 **Goal:** Editor pembuatan survei interaktif dengan dua tampilan synchronized: Form Linear Editor & Visual Canvas Flow Designer.
 
 #### 📝 Tasks Checklist
-- [ ] **Editor Container (`pages/admin/survey/[id]/edit.vue`):**
+- [x] **Editor Container (`pages/admin/survey/[id]/edit.vue`):**
   - Tab Switcher (`UTabs`): **Form Linear Editor** vs **Canvas Designer**
   - *Single Source of Truth* state management (perubahan di satu view langsung merefleksikan view lainnya)
-- [ ] **Form Linear Editor (`components/builder/FormLinearEditor.vue` & `QuestionEditor.vue`):**
+- [x] **Form Linear Editor (`components/builder/FormLinearEditor.vue` & `QuestionEditor.vue`):**
   - Pengelolaan section & urutan pertanyaan (`order_index`)
   - Pilihan tipe pertanyaan: `short_text`, `long_text`, `multiple_choice`, `rating`
   - Form pembuatan opsi pilihan ganda dan penandaan `is_required`
-- [ ] **Canvas Flow Designer (`components/builder/CanvasFlowDesigner.vue`):**
+- [x] **Canvas Flow Designer (`components/builder/CanvasFlowDesigner.vue`):**
   - Integrasi Vue Flow (`@vue-flow/core`)
   - Canvas controls: *Zoom In/Out*, *Panning*, *Infinite Workspace*
   - Node kustom `SectionNode.vue`: Collapsible section (expand/collapse pertanyaan & opsi)
   - Interactive Connecting Edges: Penarikan garis panah dari opsi/pertanyaan ke section tujuan
   - Debounced saving untuk koordinat node (`position_x`, `position_y`) pada event `onNodeDragStop`
-- [ ] **Advanced Logic Branching Rule Manager:**
+- [x] **Advanced Logic Branching Rule Manager:**
   - Pengaturan operator panah: `selected`, `filled`, `equals`, `not_equals`, `greater_than`, `less_than`
   - Pengaturan fallback `default_next_section_id` ("What Next?")
   - Penanda `is_end_section` untuk mengakhiri survei

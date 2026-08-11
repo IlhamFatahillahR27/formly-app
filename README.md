@@ -97,3 +97,9 @@ Preview production build:
 ```bash
 npm run preview
 ```
+
+Run test suite:
+
+```bash
+npm run test
+```

@@ -112,14 +112,14 @@ formly-app/
 **Goal:** Implementasi autentikasi Admin via Supabase Auth dan sistem proteksi route.
 
 #### 📝 Tasks Checklist
-- [ ] **Admin Login Page (`pages/admin/login.vue`):**
+- [x] **Admin Login Page (`pages/admin/login.vue`):**
   - Form login email & password menggunakan komponen `UInput`, `UForm`, `UButton`
   - Penanganan autentikasi via `useSupabaseClient().auth.signInWithPassword()`
   - Notifikasi error login menggunakan `UNotifications` / `UAlert`
-- [ ] **Route Protection Middleware (`middleware/auth.ts`):**
+- [x] **Route Protection Middleware (`middleware/auth.ts`):**
   - Proteksi seluruh route di bawah `/admin/*` menggunakan `useSupabaseUser()`
   - Auto-redirect ke `/admin/login` jika sesi tidak valid/kosong
-- [ ] **Navigation & Header (`components/AppNavbar.vue`):**
+- [x] **Navigation & Header (`components/AppNavbar.vue`):**
   - Tampilkan profil admin yang sedang login
   - Tombol Logout yang menjalankan `supabase.auth.signOut()` lalu redirect ke `/admin/login`
 

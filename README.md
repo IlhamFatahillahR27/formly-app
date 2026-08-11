@@ -57,10 +57,27 @@ To set up your Supabase PostgreSQL database tables, relationships, indexes, and 
 formly-app/
 ├── app/
 │   ├── app.vue               # Root Nuxt UI App container
+│   ├── composables/
+│   │   └── useSurveys.ts     # Typed survey CRUD composable & start section initialization
+│   ├── middleware/
+│   │   └── auth.ts           # Route guard middleware for /admin/*
 │   └── pages/
-│       └── index.vue         # Landing page
+│       ├── index.vue         # Landing page
+│       └── admin/
+│           ├── login.vue     # Admin login page
+│           ├── dashboard.vue # Admin survey dashboard (grid, search, filter, status toggle)
+│           └── survey/
+│               ├── create.vue        # Survey creation form page
+│               └── [id]/
+│                   ├── edit.vue      # Builder editor page (Phase 4 placeholder)
+│                   ├── analytics.vue # Analytics dashboard page (Phase 7 placeholder)
+│                   └── responses.vue # Survey responses & CSV export (Phase 7 placeholder)
 ├── supabase/
 │   └── migrations/           # PostgreSQL DDL migrations & RLS policies
+├── tests/
+│   ├── unit/                 # Auth & survey service unit tests
+│   ├── component/            # Vue component state tests
+│   └── e2e/                  # Playwright E2E tests
 ├── types/
 │   └── supabase.ts           # Database TypeScript definitions
 ├── .env.example              # Environment variables template
@@ -69,6 +86,15 @@ formly-app/
 ├── requirement.md            # Software Requirements Specification (SRS)
 └── roadmap.md                # Master implementation roadmap
 ```
+
+---
+
+## 💻 Key Modules & Features
+
+### Admin Survey Management Dashboard (Phase 3)
+- **Dashboard View (`/admin/dashboard`)**: Lists all surveys owned by the logged-in admin. Features real-time search filtering, status toggling (Active/Public vs Inactive/Draft), section and response counters, and action links to Builder, Analytics, Responses, and Delete confirmation modal.
+- **Survey Creation (`/admin/survey/create`)**: Form page to create a new survey. Automatically initializes an initial section ("Section 1") in `public.sections` and updates `public.surveys.start_section_id`.
+- **Survey Composable (`useSurveys.ts`)**: Provides typed helper methods for `fetchSurveys()`, `createSurvey()`, `toggleSurveyStatus()`, and `deleteSurvey()`.
 
 ---
 
@@ -98,8 +124,14 @@ Preview production build:
 npm run preview
 ```
 
-Run test suite:
+Run unit & component test suite:
 
 ```bash
 npm run test
+```
+
+Run Playwright E2E tests:
+
+```bash
+npm run test:e2e
 ```

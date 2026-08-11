@@ -142,14 +142,14 @@ formly-app/
 **Goal:** Halaman dashboard untuk mengelola daftar survei (CRUD dasar & status toggle).
 
 #### 📝 Tasks Checklist
-- [ ] **Dashboard Page (`pages/admin/dashboard.vue`):**
+- [x] **Dashboard Page (`pages/admin/dashboard.vue`):**
   - Menampilkan daftar survei milik admin terautentikasi dalam format grid/tabel (`UTable` / `UCard`)
   - Status indikator aktif/non-aktif (`UToggle` / `UBadge`)
   - Action buttons: Edit Builder, Analytics, Detail Responses, Hapus Survei
-- [ ] **Survey Creation Page (`pages/admin/create.vue`):**
+- [x] **Survey Creation Page (`pages/admin/survey/create.vue`):**
   - Form pembuat survei baru (Judul & Deskripsi)
   - Otomatis membuat initial *Section* pertama dan menyetel `start_section_id`
-- [ ] **Survey Composables / Services (`composables/useSurveys.ts`):**
+- [x] **Survey Composables / Services (`composables/useSurveys.ts`):**
   - Logic data fetching survei (`useAsyncData` / `useFetch`)
   - Function toggle `is_active` dan hapus survei (`DELETE`)
 

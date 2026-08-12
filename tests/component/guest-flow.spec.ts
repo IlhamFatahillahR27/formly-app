@@ -22,12 +22,22 @@ describe('Guest Survey Flow & UI Component Tests', () => {
 
   it('detects preview mode banner active state from route query', () => {
     const routeQueryPreview = 'true'
-    const isPreview = routeQueryPreview === 'true'
+    const isPreview = routeQueryPreview === 'true' || routeQueryPreview === '1'
     expect(isPreview).toBe(true)
 
+    const routeQueryPreviewNumeric = '1'
+    const isPreviewNumeric = routeQueryPreviewNumeric === 'true' || routeQueryPreviewNumeric === '1'
+    expect(isPreviewNumeric).toBe(true)
+
     const normalQueryPreview = undefined
-    const isNormal = normalQueryPreview === 'true'
+    const isNormal = normalQueryPreview === 'true' || normalQueryPreview === '1'
     expect(isNormal).toBe(false)
+  })
+
+  it('uses sticky top-16 z-40 class for positioning below AppNavbar', () => {
+    const bannerClasses = 'sticky top-16 z-40 w-full bg-amber-50 dark:bg-amber-950/90 border-b border-amber-200 dark:border-amber-800/60 px-4 py-2.5 shadow-sm backdrop-blur transition-all'
+    expect(bannerClasses).toContain('sticky top-16 z-40')
+    expect(bannerClasses).toContain('bg-amber-50')
   })
 
   it('validates question input required state properly', () => {

@@ -238,12 +238,12 @@ formly-app/
 **Goal:** Fitur pratinjau survei interaktif untuk Admin tanpa mengotori data asli di database.
 
 #### 📝 Tasks Checklist
-- [ ] **Preview Launcher:**
+- [x] **Preview Launcher:**
   - Tombol **Preview** di Builder yang membuka tab baru ke `/survey/[id]?preview=true`
-- [ ] **Floating Preview Banner (`components/survey/PreviewBanner.vue`):**
-  - Mendeteksi `route.query.preview === 'true'`
-  - Tampilkan banner floating warning: *"⚠️ Mode Preview: Jawaban tidak akan disimpan."*
-- [ ] **Database Bypass Handler:**
+- [x] **Floating Preview Banner (`components/survey/PreviewBanner.vue`):**
+  - Mendeteksi `route.query.preview === 'true'` atau `preview === '1'`
+  - Tampilkan banner sticky di bawah Navbar (`sticky top-16 z-40`): *"⚠️ Mode Preview: Jawaban tidak akan disimpan."*
+- [x] **Database Bypass Handler:**
   - Interseptor submit pada mode preview untuk me-bypass `INSERT` ke Supabase
   - Tampilkan alert/modal simulasi sukses submit tanpa menyimpan data ke DB
 
@@ -330,4 +330,5 @@ formly-app/
 | **Phase 8** | QA & Polish | Complete Backend Test Suite | Complete Playwright E2E Regression |
 
 ---
+
 *Roadmap ini merupakan panduan utama eksekusi proyek **Formly**. Setiap perubahan fitur wajib mengacu dan memperbarui dokumen ini.*

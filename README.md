@@ -66,7 +66,7 @@ formly-app/
 │   │   └── survey/
 │   │       ├── QuestionEditor.vue      # Question parameters, choices & logic rules editor
 │   │       ├── QuestionInput.vue       # Guest question input renderer & validation
-│   │       └── PreviewBanner.vue       # Floating banner for interactive preview mode
+│   │       └── PreviewBanner.vue       # Floating sticky banner for interactive preview mode
 │   ├── composables/
 │   │   ├── useSurveys.ts               # Typed survey CRUD composable
 │   │   ├── useSurveyBuilder.ts        # Single source of truth builder state & debounced position save
@@ -89,8 +89,8 @@ formly-app/
 ├── supabase/
 │   └── migrations/           # PostgreSQL DDL migrations & RLS policies
 ├── tests/
-│   ├── unit/                 # Auth, survey service & builder logic unit tests
-│   ├── component/            # Vue component & dual-mode sync tests
+│   ├── unit/                 # Auth, survey service, runner & builder logic unit tests
+│   ├── component/            # Vue component, preview banner & dual-mode sync tests
 │   └── e2e/                  # Playwright E2E tests
 ├── types/
 │   └── supabase.ts           # Database TypeScript definitions
@@ -121,8 +121,13 @@ formly-app/
 - **Public Survey Page (`/survey/[id]`)**: Accessible to unauthenticated guest users. Fetches active survey data, section sequence, questions, and section logic rules from Supabase. Features step progress tracking, required field validation, and responsive input components (`QuestionInput.vue`).
 - **Dynamic Navigation Engine**: Evaluates `section_logic` rules for operators (`selected`, `filled`, `equals`, `not_equals`, `greater_than`, `less_than`) based on guest inputs to calculate target sections (`target_section_id`). Falls back seamlessly to `default_next_section_id` when conditions are unfulfilled.
 - **State Elimination & Back Tracking**: Retains navigation history stack and `completedCategories` in state. When guests navigate back to category sections, previously completed choices are tracked and eliminated from subsequent selections.
-- **Atomic Database Submission & Sandbox Preview**: Sequentially creates a response record in `public.responses` and answer rows in `public.answers`. Automatically intercepts database calls during interactive preview mode (`?preview=true`) with a floating banner (`PreviewBanner.vue`) and simulated success toast.
-- **Runner Composable (`useSurveyRunner.ts`)**: Encapsulates guest state, navigation stack, validation errors, state elimination, dynamic logic rule evaluation, and atomic DB insertion/preview bypass.
+- **Atomic Database Submission**: Sequentially creates a response record in `public.responses` and answer rows in `public.answers`.
+- **Runner Composable (`useSurveyRunner.ts`)**: Encapsulates guest state, navigation stack, validation errors, state elimination, dynamic logic rule evaluation, and atomic DB insertion.
+
+### Interactive Sandbox Preview Mode (Phase 6)
+- **Preview Launcher**: Clicking the **Preview Mode** button in Builder opens `/survey/[id]?preview=true` in a new browser tab.
+- **Sticky Preview Banner (`PreviewBanner.vue`)**: Detects `preview=true` or `preview=1` route query. Renders a sticky warning banner pinned directly under the Navbar (`sticky top-16 z-40`).
+- **Database Insertion Bypass**: Automatically intercepts survey submission during preview mode to bypass Supabase `insert()` operations, displaying a simulated completion screen without polluting live survey responses in the database.
 
 ---
 

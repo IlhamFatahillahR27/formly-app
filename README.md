@@ -1,6 +1,6 @@
 # Formly - Interactive Section Flow Form Maker
 
-**Formly** is a fullstack SaaS application built with Nuxt 4 and Supabase. It allows admins to create interactive surveys with section-based branching logic, manage questions via a visual canvas node diagram powered by `@vue-flow/core`, and analyze response reports with real-time charts.
+**Formly** is a fullstack SaaS application built with Nuxt 4 and Supabase. It allows admins to create interactive surveys with section-based branching logic, manage questions via a visual canvas node diagram powered by `@vue-flow/core`, analyze response reports with real-time Chart.js visual charts, and export Excel-compatible CSV reports.
 
 ---
 
@@ -10,6 +10,7 @@
 - **Visual Node Canvas:** `@vue-flow/core` & `@vue-flow/additional-components`
 - **Backend & Database:** Supabase (PostgreSQL DDL, Supabase Auth, Row Level Security / RLS)
 - **Data Visualization:** Chart.js & `vue-chartjs`
+- **CSV Generator:** PapaParse with UTF-8 BOM (`\ufeff`) & JSONB choice flattener
 - **Type Safety:** Supabase auto-typed definitions (`types/supabase.ts`)
 - **Testing:** Vitest, `@nuxt/test-utils`, `@playwright/test`
 
@@ -59,41 +60,45 @@ formly-app/
 ├── app/
 │   ├── app.vue               # Root Nuxt UI App container
 │   ├── components/
+│   │   ├── analytics/
+│   │   │   ├── ChartPie.vue            # Chart.js Doughnut chart component (bounded height, cutout: 65%)
+│   │   │   └── ChartBar.vue            # Chart.js Bar chart component for rating distribution
 │   │   ├── builder/
 │   │   │   ├── FormLinearEditor.vue    # Linear section & question editor component
 │   │   │   ├── CanvasFlowDesigner.vue  # Vue Flow visual canvas designer component
 │   │   │   └── nodes/
 │   │   │       └── SectionNode.vue     # Custom Vue Flow node with collapsible sections
 │   │   └── survey/
-│   │       ├── QuestionEditor.vue      # Question parameters, choices, max rating & logic rules editor
-│   │       ├── QuestionInput.vue       # Guest question input renderer, Google Reviews star rating & validation
+│   │       ├── QuestionEditor.vue      # Question parameters, choices, USwitch required toggle & clear buttons
+│   │       ├── QuestionInput.vue       # Guest input renderer with deselect re-click & Kosongkan Jawaban clear button
 │   │       ├── PreviewBanner.vue       # Floating sticky banner for interactive preview mode
 │   │       └── ShareSurveyModal.vue    # Share modal with live QR code & high-res PNG graphic card exporter
 │   ├── composables/
 │   │   ├── useSurveys.ts               # Typed survey CRUD composable
-│   │   ├── useSurveyBuilder.ts        # Single source of truth builder state & debounced position save
-│   │   └── useSurveyRunner.ts         # Guest survey execution, dynamic logic engine & multi-iteration submission
+│   │   ├── useSurveyBuilder.ts        # Single source of truth builder state & status toggle
+│   │   ├── useSurveyRunner.ts         # Guest survey execution, dynamic logic engine & inactive state guard
+│   │   └── useSurveyAnalytics.ts      # Analytics aggregator, section metrics & Excel-compatible CSV generator
 │   ├── middleware/
 │   │   └── auth.ts           # Route guard middleware for /admin/*
 │   └── pages/
 │       ├── index.vue         # Landing page
 │       ├── survey/
-│       │   └── [id].vue      # Public guest survey execution & preview page
+│       │   └── [id].vue      # Public guest survey execution, preview mode & dedicated Inactive Survey screen
 │       └── admin/
 │           ├── login.vue     # Admin login page
-│           ├── dashboard.vue # Admin survey dashboard (grid, search, filter, status toggle)
+│           ├── dashboard.vue # Admin survey dashboard (grid, search, filter, USwitch status toggle)
 │           └── survey/
 │               ├── create.vue        # Survey creation form page
 │               └── [id]/
-│                   ├── edit.vue      # Dual-mode survey builder page
-│                   ├── analytics.vue # Analytics dashboard page (Phase 7 placeholder)
-│                   └── responses.vue # Survey responses & CSV export (Phase 7 placeholder)
+│                   ├── edit.vue      # Dual-mode survey builder page with live status toggle switch
+│                   ├── analytics.vue # Analytics dashboard & section summary highlight boxes
+│                   └── responses.vue # Detailed survey responses table & Section-grouped detail modal
 ├── supabase/
 │   └── migrations/           # PostgreSQL DDL migrations & RLS policies
 ├── tests/
-│   ├── unit/                 # Auth, survey service, runner & builder logic unit tests
-│   ├── component/            # Vue component, preview banner & dual-mode sync tests
-│   └── e2e/                  # Playwright E2E tests
+│   ├── unit/                 # Auth, survey service, runner, builder logic & analytics unit tests
+│   ├── component/            # Vue component, preview banner, charts & dual-mode sync tests
+│   └── e2e/                  # Playwright E2E & CSV export tests
 ├── types/
 │   └── supabase.ts           # Database TypeScript definitions
 ├── .env.example              # Environment variables template
@@ -108,30 +113,28 @@ formly-app/
 ## 💻 Key Modules & Features
 
 ### Admin Survey Management Dashboard & Share Suites (Phase 3 & Extensions)
-- **Dashboard View (`/admin/dashboard`)**: Lists all surveys owned by the logged-in admin. Features real-time search filtering, status toggling (Active/Public vs Inactive/Draft), section and response counters, and action links to Builder, Share QR, Analytics, Responses, and Delete confirmation modal.
-- **Share & Graphic QR Card Exporter (`ShareSurveyModal.vue`)**: Allows admins to copy the public survey link with Toast notifications, view a live interactive QR Code preview, and export a high-resolution (1000x1300px) branded PNG graphic card. The exported card features Formly branding, formatted survey title, description, QR code, public URL, and scan instructions.
+- **Dashboard View (`/admin/dashboard`)**: Lists all surveys owned by the logged-in admin. Features real-time search filtering, status toggling using `USwitch` (Active/Public vs Draft/Inactive), section and response counters, and action links to Builder, Share QR, Analytics, Responses, and Delete confirmation modal.
+- **Share & Graphic QR Card Exporter (`ShareSurveyModal.vue`)**: Allows admins to copy the public survey link with Toast notifications, view a live interactive QR Code preview, and export a high-resolution (1000x1300px) branded PNG graphic card.
 - **Survey Creation (`/admin/survey/create`)**: Form page to create a new survey. Automatically initializes an initial section ("Section 1") in `public.sections` and updates `public.surveys.start_section_id`.
-- **Survey Composable (`useSurveys.ts`)**: Provides typed helper methods for `fetchSurveys()`, `createSurvey()`, `toggleSurveyStatus()`, and `deleteSurvey()`.
 
 ### Dual-Mode Survey Builder & Canvas Designer (Phase 4)
-- **Builder Editor View (`/admin/survey/[id]/edit`)**: Interactive survey authoring suite with synchronized dual views: **Form Linear Editor** and **Canvas Flow Designer**. Features a top toolbar with real-time saving status, survey metadata, and a **Preview** button opening `/survey/[id]?preview=true` in a new tab.
-- **Form Linear Editor (`FormLinearEditor.vue` & `QuestionEditor.vue`)**: Full management of survey sections (reordering, fallback "What Next?" next section selection, Start / End section flags) and questions (`short_text`, `long_text`, `multiple_choice`, `rating`). Includes dynamic option management for choice questions, customizable rating max star scale (1-10 stars with live editor preview), and an inline Logic Branching Rule editor.
-- **Canvas Flow Designer (`CanvasFlowDesigner.vue` & `SectionNode.vue`)**: Drag-and-drop visual node map powered by `@vue-flow/core` featuring custom collapsible `SectionNode` cards, interactive connecting edge arrows, zoom/pan controls, background grid, and mini-map.
-- **Debounced Position Saving & Logic Branching**: Automatically saves node canvas coordinates (`position_x`, `position_y`) with a 500ms debounce buffer on `onNodeDragStop`. Interactive line drawing connects choice options or sections to create/update `section_logic` branching rules and fallback section routes.
-- **Builder Composable (`useSurveyBuilder.ts`)**: Serves as the Single Source of Truth managing reactive survey state, section CRUD, question CRUD, section logic rules, and debounced database persistence.
+- **Builder Editor View (`/admin/survey/[id]/edit`)**: Interactive survey authoring suite with synchronized dual views (**Form Linear Editor** and **Canvas Flow Designer**) and a header `USwitch` status toggle for live publishing/unpublishing.
+- **Form Linear Editor (`FormLinearEditor.vue` & `QuestionEditor.vue`)**: Full management of survey sections and questions (`short_text`, `long_text`, `multiple_choice`, `rating`). Includes dynamic option management, `USwitch` toggle for Required vs Optional state, "Kosongkan Teks" & "Kosongkan Opsi" buttons, customizable rating max star scale (1-10 stars), and inline Logic Branching Rule editor.
+- **Canvas Flow Designer (`CanvasFlowDesigner.vue` & `SectionNode.vue`)**: Drag-and-drop visual node map powered by `@vue-flow/core` with debounced coordinate saving (500ms).
 
-### Guest Survey Execution, Google Reviews Rating & Multi-Iteration Logic (Phase 5)
-- **Public Survey Page (`/survey/[id]`)**: Accessible to unauthenticated guest users. Fetches active survey data, section sequence, questions, and section logic rules from Supabase. Features step progress tracking, required field validation, and responsive input components (`QuestionInput.vue`).
-- **Google Reviews Style Rating Component**: Renders an interactive star rating scale matching Google Reviews UI (`#fbbc04` gold stars, hover highlight from star 1 to N, clickable rating scale, score indicator). Supports configurable max star rating up to 10.
-- **Unlocked Choice Selection & Category Elimination**: Ensures all choice options remain unlocked and clickable in returned sections. In looped survey flows, previously completed category choices are tracked in `completedCategories` and automatically hidden from choice lists when looping back to category sections.
-- **Multi-Iteration Database Persistence**: Preserves answers across all section visits/loops in a session. Inserts rows into `public.answers` tagged with `iteration_index`, ensuring full data retention without overwriting prior loop answers.
-- **Dynamic Navigation Engine**: Evaluates `section_logic` rules for operators (`selected`, `filled`, `equals`, `not_equals`, `greater_than`, `less_than`) based on guest inputs to calculate target sections (`target_section_id`). Falls back seamlessly to `default_next_section_id` when conditions are unfulfilled.
-- **Runner Composable (`useSurveyRunner.ts`)**: Encapsulates guest state, navigation stack, validation errors, state elimination, dynamic logic rule evaluation, multi-iteration section answer snapshots, and atomic DB insertion.
+### Guest Survey Execution & Dedicated Inactive Survey View (Phase 5)
+- **Public Survey Page (`/survey/[id]`)**: Accessible to guest users. Features step progress tracking, required field validation, category elimination in looped survey flows, and multi-iteration database persistence.
+- **Dedicated Inactive Survey Screen**: Displays a friendly, branded "Survei Sedang Tidak Aktif" card with a lock icon, survey title badge, scan notice, and reload/home navigation buttons when a guest accesses an inactive survey.
+- **Deselect & Clear Answer Capabilities (`QuestionInput.vue`)**: Allows users to deselect/uncheck choice options or star ratings by clicking again on an already selected item. Includes a "Kosongkan Jawaban" reset button for instant answer clearing.
 
 ### Interactive Sandbox Preview Mode (Phase 6)
-- **Preview Launcher**: Clicking the **Preview Mode** button in Builder opens `/survey/[id]?preview=true` in a new browser tab.
-- **Sticky Preview Banner (`PreviewBanner.vue`)**: Detects `preview=true` or `preview=1` route query. Renders a sticky warning banner pinned directly under the Navbar (`sticky top-16 z-40`).
-- **Database Insertion Bypass**: Automatically intercepts survey submission during preview mode to bypass Supabase `insert()` operations, displaying a simulated completion screen without polluting live survey responses in the database.
+- **Preview Launcher & Sticky Banner**: Opens `/survey/[id]?preview=true` in a new tab with a sticky warning banner (`PreviewBanner.vue`).
+- **Database Bypass**: Intercepts submission during preview mode to bypass database `insert()` operations, displaying a simulated completion screen without polluting live response data.
+
+### Analytics Report, Section Highlights & Excel-Compatible CSV Exporter (Phase 7)
+- **Analytics Dashboard (`/admin/survey/[id]/analytics`)**: High-level KPI stat cards (Total Responden, Total Pertanyaan & Section, Rata-rata Rating, Respon Terakhir), **Section Executive Summary Highlight Boxes** (Section Average Rating, Top Choice Option, Section Participation Volume), and Chart.js visualizations (Responsive Doughnut chart, Bar chart for Rating distribution, Scrollable Text response feed).
+- **Responses Grid Table (`/admin/survey/[id]/responses`)**: Nuxt UI v3 UTable grid with short hash Response IDs (`#042d544c`), formatted Indonesian date/timestamps (`12 Agu 2026, 18.46`), search filter, pagination, and a **Response Detail Modal** that groups respondent answers under Section headers with an explicit close button (`Tutup Modal`).
+- **Excel-Compatible CSV Generator (`useSurveyAnalytics.ts`)**: Built adhering to `.skills/csv-generator.md` specification. Includes UTF-8 BOM (`\ufeff`) header prefix for Microsoft Excel compatibility, section-grouped column headers (`[Section 1: Judul Section] P1: Teks Pertanyaan`), short Response IDs (`#042d544c`), clean JSONB choice object extraction (recursively parses JSON choice objects into clean strings to prevent `[object Object]`), and CSV text escaping.
 
 ---
 

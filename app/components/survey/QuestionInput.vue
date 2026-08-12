@@ -79,7 +79,7 @@
             type="button"
             class="p-1 sm:p-1.5 focus:outline-none transition-transform duration-150 transform hover:scale-125 active:scale-95 cursor-pointer"
             @mouseenter="hoverRating = star"
-            @click="onUpdateValue(star)"
+            @click="selectRating(star)"
           >
             <svg
               class="w-8 h-8 sm:w-9 sm:h-9 transition-colors duration-150 drop-shadow-xs"
@@ -119,6 +119,19 @@
       </div>
     </div>
 
+    <!-- Clear Answer Action Button -->
+    <div v-if="hasAnswer" class="flex justify-end pt-1">
+      <button
+        type="button"
+        class="inline-flex items-center text-xs text-gray-400 hover:text-red-500 transition-colors cursor-pointer"
+        title="Kosongkan/Reset Jawaban Pertanyaan Ini"
+        @click="clearAnswer"
+      >
+        <UIcon name="i-heroicons-arrow-path" class="w-3.5 h-3.5 mr-1" />
+        Kosongkan Jawaban
+      </button>
+    </div>
+
     <!-- Error Validation Message -->
     <div v-if="errorMessage" class="flex items-center space-x-1 text-xs text-red-600 dark:text-red-400 pt-1 font-medium">
       <UIcon name="i-heroicons-exclamation-circle" class="w-4 h-4 shrink-0" />
@@ -151,6 +164,12 @@ const emit = defineEmits<{
 }>()
 
 const hoverRating = ref<number | null>(null)
+
+const hasAnswer = computed(() => {
+  if (props.modelValue === null || props.modelValue === undefined || props.modelValue === '') return false
+  if (typeof props.modelValue === 'object' && Object.keys(props.modelValue).length === 0) return false
+  return true
+})
 
 // Calculate max rating stars dynamically bounded between 1 and 10
 const maxStars = computed<number>(() => {
@@ -223,7 +242,25 @@ function isOptionSelected(option: ChoiceOption): boolean {
 }
 
 function selectOption(option: ChoiceOption) {
+  // If already selected, deselect / clear choice!
+  if (isOptionSelected(option)) {
+    clearAnswer()
+    return
+  }
   emit('update:modelValue', { id: option.id, text: option.text })
+}
+
+function selectRating(star: number) {
+  // If already selected, deselect / clear rating!
+  if (Number(props.modelValue) === star) {
+    clearAnswer()
+    return
+  }
+  onUpdateValue(star)
+}
+
+function clearAnswer() {
+  emit('update:modelValue', null)
 }
 
 function onUpdateValue(val: any) {

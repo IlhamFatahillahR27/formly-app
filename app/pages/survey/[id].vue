@@ -16,7 +16,35 @@
           </p>
         </div>
 
-        <!-- Error / Inactive State -->
+        <!-- Inactive Survey State Card -->
+        <div v-else-if="isInactive && !isSubmitted" class="p-8 sm:p-12 text-center bg-white dark:bg-gray-900 rounded-2xl border border-amber-200/80 dark:border-amber-900/50 shadow-sm space-y-5">
+          <div class="w-16 h-16 rounded-full bg-amber-100 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 flex items-center justify-center mx-auto">
+            <UIcon name="i-heroicons-lock-closed" class="w-8 h-8" />
+          </div>
+
+          <div class="space-y-2">
+            <UBadge v-if="survey?.title" color="neutral" variant="soft" size="xs">
+              {{ survey.title }}
+            </UBadge>
+            <h2 class="text-2xl font-bold text-gray-900 dark:text-white">
+              Survei Sedang Tidak Aktif
+            </h2>
+            <p class="text-sm text-gray-600 dark:text-gray-400 max-w-md mx-auto leading-relaxed">
+              Maaf, pengisian survei ini sedang ditutup atau dinonaktifkan sementara waktu oleh pembuat survei. Silakan hubungi administrator survei jika Anda membutuhkan akses.
+            </p>
+          </div>
+
+          <div class="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3">
+            <UButton color="neutral" variant="outline" size="sm" icon="i-heroicons-arrow-path" @click="reloadPage">
+              Muat Ulang
+            </UButton>
+            <UButton color="primary" variant="solid" size="sm" icon="i-heroicons-home" to="/">
+              Kembali ke Beranda
+            </UButton>
+          </div>
+        </div>
+
+        <!-- Generic Error State -->
         <div v-else-if="errorMessage && !isSubmitted" class="p-8 sm:p-12 text-center bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm space-y-4">
           <div class="w-12 h-12 rounded-full bg-red-100 dark:bg-red-950/60 text-red-600 dark:text-red-400 flex items-center justify-center mx-auto">
             <UIcon name="i-heroicons-exclamation-triangle" class="w-6 h-6" />
@@ -211,6 +239,13 @@ onMounted(async () => {
   }
 })
 
+const isInactive = computed(() => {
+  if (isPreview.value) return false
+  if (errorMessage.value && errorMessage.value.toLowerCase().includes('tidak aktif')) return true
+  if (survey.value && !survey.value.is_active) return true
+  return false
+})
+
 const hasNextSection = computed(() => {
   if (!currentSection.value) return false
   if (currentSection.value.is_end_section) return false
@@ -290,6 +325,12 @@ function handlePrevious() {
 
 function handleSubmit() {
   submitSurvey(isPreview.value)
+}
+
+function reloadPage() {
+  if (typeof window !== 'undefined') {
+    window.location.reload()
+  }
 }
 
 useSeoMeta({

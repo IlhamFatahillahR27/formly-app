@@ -14,14 +14,30 @@
           <h1 class="text-2xl font-bold text-gray-900 dark:text-white">
             {{ survey?.title || 'Survey Builder' }}
           </h1>
-          <UBadge
-            v-if="survey"
-            :color="survey.is_active ? 'emerald' : 'gray'"
-            variant="soft"
-            size="xs"
-          >
-            {{ survey.is_active ? 'Aktif / Publik' : 'Non-Aktif' }}
-          </UBadge>
+          <div class="flex items-center space-x-2">
+            <USwitch
+              v-if="survey"
+              :model-value="survey.is_active"
+              size="sm"
+              color="primary"
+              title="Aktifkan / Menonaktifkan Sesi Survei"
+              @update:model-value="handleToggleStatus"
+            />
+            <button
+              v-if="survey"
+              type="button"
+              class="cursor-pointer"
+              @click="handleToggleStatus(!survey.is_active)"
+            >
+              <UBadge
+                :color="survey.is_active ? 'emerald' : 'gray'"
+                variant="soft"
+                size="xs"
+              >
+                {{ survey.is_active ? 'Aktif / Publik' : 'Non-Aktif' }}
+              </UBadge>
+            </button>
+          </div>
         </div>
         <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
           Dual-Mode Form Linear Editor &amp; Visual Canvas Flow Designer.
@@ -98,42 +114,46 @@
         <nav class="-mb-px flex space-x-6" aria-label="Tabs">
           <button
             type="button"
-            @click="activeTabKey = 'linear'"
+            class="py-3 px-1 border-b-2 font-medium text-sm inline-flex items-center space-x-2 transition-colors cursor-pointer"
             :class="[
-              activeTabKey === 'linear'
-                ? 'border-primary-500 text-primary-600 dark:text-primary-400 font-bold'
-                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-200',
-              'whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm flex items-center transition-colors cursor-pointer'
+              activeTab === 'linear'
+                ? 'border-primary-500 text-primary-600 dark:text-primary-400'
+                : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
             ]"
+            @click="activeTab = 'linear'"
           >
-            <UIcon name="i-heroicons-list-bullet" class="w-4 h-4 mr-2" />
-            Form Linear Editor
+            <UIcon name="i-heroicons-bars-3-bottom-left" class="w-4 h-4" />
+            <span>Form Linear Editor</span>
           </button>
 
           <button
             type="button"
-            @click="activeTabKey = 'canvas'"
+            class="py-3 px-1 border-b-2 font-medium text-sm inline-flex items-center space-x-2 transition-colors cursor-pointer"
             :class="[
-              activeTabKey === 'canvas'
-                ? 'border-primary-500 text-primary-600 dark:text-primary-400 font-bold'
-                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-200',
-              'whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm flex items-center transition-colors cursor-pointer'
+              activeTab === 'canvas'
+                ? 'border-primary-500 text-primary-600 dark:text-primary-400'
+                : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
             ]"
+            @click="activeTab = 'canvas'"
           >
-            <UIcon name="i-heroicons-squares-2x2" class="w-4 h-4 mr-2" />
-            Canvas Flow Designer
+            <UIcon name="i-heroicons-cube-transparent" class="w-4 h-4" />
+            <span>Canvas Flow Designer</span>
           </button>
         </nav>
       </div>
 
-      <!-- Tab Content Area -->
-      <div class="pt-2">
-        <FormLinearEditor v-if="activeTabKey === 'linear'" />
-        <CanvasFlowDesigner v-else-if="activeTabKey === 'canvas'" />
+      <!-- Tab Content 1: Form Linear Editor -->
+      <div v-if="activeTab === 'linear'">
+        <FormLinearEditor />
+      </div>
+
+      <!-- Tab Content 2: Canvas Flow Designer -->
+      <div v-else-if="activeTab === 'canvas'">
+        <CanvasFlowDesigner />
       </div>
     </div>
 
-    <!-- Share & QR Modal -->
+    <!-- Share & QR Modal Exporter -->
     <ShareSurveyModal
       v-model:open="isShareModalOpen"
       :survey="survey"
@@ -142,6 +162,7 @@
 </template>
 
 <script setup lang="ts">
+import { ref, computed, onMounted } from 'vue'
 import { useSurveyBuilder } from '~/composables/useSurveyBuilder'
 import FormLinearEditor from '~/components/builder/FormLinearEditor.vue'
 import CanvasFlowDesigner from '~/components/builder/CanvasFlowDesigner.vue'
@@ -152,12 +173,13 @@ definePageMeta({
 })
 
 const route = useRoute()
-const surveyId = computed(() => String(route.params.id || ''))
+const toast = useToast()
+const surveyId = computed(() => String(route.params.id))
 
-const { survey, loading, saving, error, loadSurveyData } = useSurveyBuilder()
+const { survey, loading, saving, error, loadSurveyData, toggleSurveyStatus } = useSurveyBuilder()
 
-const activeTabKey = ref<'linear' | 'canvas'>('linear')
-const saveSuccessMessage = ref('')
+const activeTab = ref<'linear' | 'canvas'>('linear')
+const saveSuccessMessage = ref<string | null>(null)
 const isShareModalOpen = ref(false)
 
 onMounted(async () => {
@@ -166,21 +188,35 @@ onMounted(async () => {
   }
 })
 
-async function onManualSave() {
-  if (surveyId.value) {
-    const success = await loadSurveyData(surveyId.value)
-    if (success) {
-      saveSuccessMessage.value = 'Perubahan Tersimpan'
-      setTimeout(() => {
-        saveSuccessMessage.value = ''
-      }, 3000)
-    }
+async function handleToggleStatus(newVal: boolean) {
+  if (!survey.value) return
+  const success = await toggleSurveyStatus(newVal)
+  if (success) {
+    toast.add({
+      title: 'Status Diperbarui',
+      description: `Survei sekarang ${newVal ? 'Aktif / Publik' : 'Non-Aktif (Ditutup)'}.`,
+      color: 'success',
+      icon: 'i-heroicons-check-circle',
+    })
+  } else {
+    toast.add({
+      title: 'Gagal Mengubah Status',
+      description: error.value || 'Terjadi kesalahan saat mengubah status.',
+      color: 'error',
+      icon: 'i-heroicons-exclamation-circle',
+    })
   }
 }
 
+function onManualSave() {
+  saveSuccessMessage.value = 'Perubahan disimpan.'
+  setTimeout(() => {
+    saveSuccessMessage.value = null
+  }, 3000)
+}
+
 function openPreview() {
-  if (surveyId.value) {
-    window.open(`/survey/${surveyId.value}?preview=true`, '_blank')
-  }
+  if (!surveyId.value) return
+  window.open(`/survey/${surveyId.value}?preview=true`, '_blank')
 }
 </script>

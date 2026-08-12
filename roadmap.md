@@ -273,14 +273,14 @@ formly-app/
 **Goal:** Visualisasi grafik statistik hasil respon survei dan fitur unduh data jawaban.
 
 #### 📝 Tasks Checklist
-- [ ] **Analytics Page (`pages/admin/survey/[id]/analytics.vue`):**
+- [x] **Analytics Page (`pages/admin/survey/[id]/analytics.vue`):**
   - Visualisasi pertanyaan *Multiple Choice* & *Rating* menggunakan Chart.js (`ChartBar.vue`, `ChartPie.vue`)
   - Aggregation data berbasis SQL (`COUNT`, `GROUP BY`)
   - Feed daftar respon teks terbaru untuk tipe `short_text` dan `long_text`
-- [ ] **Detail Responses Page (`pages/admin/survey/[id]/responses.vue`):**
+- [x] **Detail Responses Page (`pages/admin/survey/[id]/responses.vue`):**
   - Tabel interaktif `UTable` menampilkan riwayat jawaban responden per baris
   - Pagination, sorting, dan filter data
-- [ ] **CSV Export Engine:**
+- [x] **CSV Export Engine:**
   - Tombol **Export CSV** menggunakan `papaparse` / custom CSV exporter
   - Format ekspor menyusun kolom berdasarkan pertanyaan dan baris berdasarkan responden
 

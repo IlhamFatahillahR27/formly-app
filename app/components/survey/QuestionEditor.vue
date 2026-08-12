@@ -19,19 +19,30 @@
         </div>
 
         <div class="flex items-center space-x-2 shrink-0">
-          <UToggle
-            v-model="isRequired"
-            size="xs"
-            color="primary"
-            @update:model-value="onUpdateRequired"
-          />
-          <span class="text-2xs text-gray-500 hidden sm:inline">Wajib Diisi</span>
+          <!-- Required / Optional Switch Toggle -->
+          <div class="flex items-center space-x-1.5 bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded-lg border border-gray-200 dark:border-gray-700">
+            <USwitch
+              :model-value="isRequired"
+              size="xs"
+              color="primary"
+              @update:model-value="onUpdateRequired"
+            />
+            <button
+              type="button"
+              class="text-xs font-medium cursor-pointer transition-colors"
+              :class="isRequired ? 'text-primary-600 dark:text-primary-400 font-bold' : 'text-gray-500 dark:text-gray-400'"
+              @click="onUpdateRequired(!isRequired)"
+            >
+              {{ isRequired ? 'Wajib Diisi' : 'Opsional' }}
+            </button>
+          </div>
 
           <UButton
             color="error"
             variant="ghost"
             icon="i-heroicons-trash"
             size="xs"
+            title="Hapus Pertanyaan"
             @click="onDelete"
           />
         </div>
@@ -42,8 +53,16 @@
       <!-- Question Text & Type Row -->
       <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
         <div class="md:col-span-2">
-          <label class="block text-2xs font-semibold text-gray-600 dark:text-gray-400 mb-1">
-            Teks Pertanyaan
+          <label class="block text-2xs font-semibold text-gray-600 dark:text-gray-400 mb-1 flex justify-between">
+            <span>Teks Pertanyaan</span>
+            <button
+              v-if="questionText"
+              type="button"
+              class="text-gray-400 hover:text-red-500 transition-colors font-normal cursor-pointer"
+              @click="clearQuestionText"
+            >
+              Kosongkan Teks
+            </button>
           </label>
           <UInput
             v-model="questionText"
@@ -80,15 +99,27 @@
           <span class="text-xs font-medium text-gray-700 dark:text-gray-300">
             Daftar Opsi Jawaban
           </span>
-          <UButton
-            size="xs"
-            color="primary"
-            variant="soft"
-            icon="i-heroicons-plus"
-            @click="addOption"
-          >
-            Tambah Opsi
-          </UButton>
+          <div class="flex items-center space-x-2">
+            <UButton
+              v-if="optionsList.length > 0"
+              size="xs"
+              color="neutral"
+              variant="ghost"
+              icon="i-heroicons-trash"
+              @click="clearAllOptions"
+            >
+              Kosongkan Opsi
+            </UButton>
+            <UButton
+              size="xs"
+              color="primary"
+              variant="soft"
+              icon="i-heroicons-plus"
+              @click="addOption"
+            >
+              Tambah Opsi
+            </UButton>
+          </div>
         </div>
 
         <div v-if="optionsList.length === 0" class="text-2xs text-gray-400 py-1">
@@ -412,6 +443,11 @@ function getSectionTitle(sectionId: string): string {
   return sec ? sec.title : sectionId.slice(0, 8)
 }
 
+async function clearQuestionText() {
+  questionText.value = ''
+  await updateQuestion(props.question.id, { question_text: '' })
+}
+
 async function onSaveQuestionText() {
   if (questionText.value !== props.question.question_text) {
     await updateQuestion(props.question.id, { question_text: questionText.value })
@@ -419,6 +455,7 @@ async function onSaveQuestionText() {
 }
 
 async function onUpdateRequired(val: boolean) {
+  isRequired.value = val
   await updateQuestion(props.question.id, { is_required: val })
 }
 
@@ -443,6 +480,11 @@ function addOption() {
 
 function removeOption(optId: string) {
   optionsList.value = optionsList.value.filter((o) => o.id !== optId)
+  saveOptions()
+}
+
+function clearAllOptions() {
+  optionsList.value = []
   saveOptions()
 }
 

@@ -69,8 +69,8 @@ export function useSurveyBuilder() {
       }
       sections.value = sectionsData || []
 
-      // 3. Fetch questions ordered by order_index
-      const sectionIds = (sections.value || []).map((s) => s.id)
+      // 3. Fetch questions belonging to this survey's sections
+      const sectionIds = sections.value.map((s) => s.id)
       if (sectionIds.length > 0) {
         const { data: questionsData, error: questionsErr } = await supabase
           .from('questions')
@@ -114,7 +114,6 @@ export function useSurveyBuilder() {
    * Update section canvas position with debounce (500ms)
    */
   function updateNodePosition(sectionId: string, position_x: number, position_y: number) {
-    // Immediate local state update for smooth canvas rendering
     const secIndex = sections.value.findIndex((s) => s.id === sectionId)
     if (secIndex !== -1) {
       sections.value[secIndex] = {
@@ -124,12 +123,10 @@ export function useSurveyBuilder() {
       }
     }
 
-    // Clear existing timer if any
     if (positionDebounceTimers[sectionId]) {
       clearTimeout(positionDebounceTimers[sectionId])
     }
 
-    // Debounced update to Supabase
     positionDebounceTimers[sectionId] = setTimeout(async () => {
       delete positionDebounceTimers[sectionId]
       try {
@@ -138,7 +135,7 @@ export function useSurveyBuilder() {
           .update({ position_x, position_y })
           .eq('id', sectionId)
       } catch (err) {
-        console.error('Failed to save node position:', err)
+        console.error('Failed to update node position:', err)
       }
     }, 500)
   }
@@ -146,41 +143,42 @@ export function useSurveyBuilder() {
   /**
    * Create a new Section
    */
-  async function createSection(payload?: { title?: string; description?: string }): Promise<SectionRow | null> {
+  async function createSection(
+    titleOrPayload?: string | { title?: string }
+  ): Promise<SectionRow | null> {
     if (!survey.value) return null
-
     saving.value = true
-    error.value = null
 
-    const newOrderIndex = sections.value.length
-    const defaultTitle = payload?.title || `Section ${newOrderIndex + 1}`
-    const lastSection = sections.value[sections.value.length - 1]
-    const defaultX = lastSection ? lastSection.position_x + 320 : 100
-    const defaultY = lastSection ? lastSection.position_y : 100
+    const newIndex = sections.value.length
+    let defaultTitle = `Section ${newIndex + 1}`
+
+    if (typeof titleOrPayload === 'string' && titleOrPayload.trim()) {
+      defaultTitle = titleOrPayload.trim()
+    } else if (typeof titleOrPayload === 'object' && titleOrPayload !== null && 'title' in titleOrPayload && (titleOrPayload as any).title) {
+      defaultTitle = String((titleOrPayload as any).title).trim()
+    }
 
     try {
-      const { data, error: secErr } = await supabase
+      const { data, error: err } = await supabase
         .from('sections')
         .insert({
           survey_id: survey.value.id,
           title: defaultTitle,
-          description: payload?.description || null,
-          position_x: defaultX,
-          position_y: defaultY,
-          order_index: newOrderIndex,
+          position_x: 100 + newIndex * 280,
+          position_y: 100,
+          order_index: newIndex,
         })
         .select()
         .single()
 
-      if (secErr || !data) {
-        error.value = secErr?.message || 'Gagal membuat section baru.'
+      if (err || !data) {
+        error.value = err?.message || 'Gagal membuat section baru.'
         saving.value = false
         return null
       }
 
-      sections.value = [...sections.value, data]
+      sections.value.push(data)
 
-      // If survey has no start section, set this one
       if (!survey.value.start_section_id) {
         await setStartSection(data.id)
       }
@@ -188,29 +186,30 @@ export function useSurveyBuilder() {
       saving.value = false
       return data
     } catch (err: unknown) {
-      error.value = err instanceof Error ? err.message : 'Kesalahan membuat section.'
+      error.value = err instanceof Error ? err.message : 'Kesalahan saat membuat section.'
       saving.value = false
       return null
     }
   }
 
   /**
-   * Update an existing section
+   * Update Section details
    */
-  async function updateSection(sectionId: string, payload: Partial<SectionRow>): Promise<boolean> {
+  async function updateSection(
+    sectionId: string,
+    updates: Partial<Omit<SectionRow, 'id' | 'survey_id' | 'created_at' | 'updated_at'>>
+  ): Promise<boolean> {
     saving.value = true
-    error.value = null
-
     try {
-      const { data, error: secErr } = await supabase
+      const { data, error: err } = await supabase
         .from('sections')
-        .update(payload)
+        .update(updates)
         .eq('id', sectionId)
         .select()
         .single()
 
-      if (secErr || !data) {
-        error.value = secErr?.message || 'Gagal memperbarui section.'
+      if (err || !data) {
+        error.value = err?.message || 'Gagal mengedit section.'
         saving.value = false
         return false
       }
@@ -223,32 +222,25 @@ export function useSurveyBuilder() {
       saving.value = false
       return true
     } catch (err: unknown) {
-      error.value = err instanceof Error ? err.message : 'Kesalahan memperbarui section.'
+      error.value = err instanceof Error ? err.message : 'Kesalahan saat mengupdate section.'
       saving.value = false
       return false
     }
   }
 
   /**
-   * Delete a section
+   * Delete Section
    */
   async function deleteSection(sectionId: string): Promise<boolean> {
-    if (sections.value.length <= 1) {
-      error.value = 'Survei harus memiliki minimal 1 section.'
-      return false
-    }
-
     saving.value = true
-    error.value = null
-
     try {
-      const { error: delErr } = await supabase
+      const { error: err } = await supabase
         .from('sections')
         .delete()
         .eq('id', sectionId)
 
-      if (delErr) {
-        error.value = delErr.message
+      if (err) {
+        error.value = err.message
         saving.value = false
         return false
       }
@@ -259,93 +251,101 @@ export function useSurveyBuilder() {
         (l) => l.source_section_id !== sectionId && l.target_section_id !== sectionId
       )
 
-      // If start_section_id was deleted, fallback to first available section
-      if (survey.value?.start_section_id === sectionId && sections.value.length > 0) {
-        await setStartSection(sections.value[0].id)
+      if (survey.value?.start_section_id === sectionId) {
+        const nextStart = sections.value[0]?.id || null
+        await setStartSection(nextStart)
       }
 
       saving.value = false
       return true
     } catch (err: unknown) {
-      error.value = err instanceof Error ? err.message : 'Kesalahan menghapus section.'
+      error.value = err instanceof Error ? err.message : 'Kesalahan saat menghapus section.'
       saving.value = false
       return false
     }
   }
 
   /**
-   * Set start section ID for survey
+   * Set Survey Start Section
    */
-  async function setStartSection(sectionId: string): Promise<boolean> {
+  async function setStartSection(sectionId: string | null): Promise<boolean> {
     if (!survey.value) return false
+    saving.value = true
 
     try {
-      const { data, error: updateErr } = await supabase
+      const { error: err } = await supabase
         .from('surveys')
         .update({ start_section_id: sectionId })
         .eq('id', survey.value.id)
-        .select()
-        .single()
 
-      if (updateErr || !data) {
-        error.value = updateErr?.message || 'Gagal mengubah start section.'
+      if (err) {
+        error.value = err.message
+        saving.value = false
         return false
       }
 
-      survey.value = data
+      survey.value.start_section_id = sectionId
+      saving.value = false
       return true
     } catch (err: unknown) {
-      error.value = err instanceof Error ? err.message : 'Kesalahan mengubah start section.'
+      error.value = err instanceof Error ? err.message : 'Gagal mengubah start section.'
+      saving.value = false
       return false
     }
   }
 
   /**
-   * Create a new question inside a section
+   * Create Question inside a Section
    */
   async function createQuestion(
     sectionId: string,
-    payload?: {
-      question_text?: string
-      type?: QuestionType
-      is_required?: boolean
-      options?: Json
-    }
+    typeOrPayload: QuestionType | { question_text?: string; type?: QuestionType } = 'short_text'
   ): Promise<QuestionRow | null> {
     saving.value = true
-    error.value = null
-
     const sectionQuestions = questions.value.filter((q) => q.section_id === sectionId)
-    const newOrderIndex = sectionQuestions.length
+    const newIndex = sectionQuestions.length
 
-    const defaultOptions: QuestionOption[] = payload?.type === 'multiple_choice'
-      ? [
-          { id: 'opt_1', text: 'Opsi 1' },
-          { id: 'opt_2', text: 'Opsi 2' },
-        ]
-      : []
+    let type: QuestionType = 'short_text'
+    let questionText = 'Pertanyaan Baru'
+
+    if (typeof typeOrPayload === 'string') {
+      type = typeOrPayload
+    } else if (typeof typeOrPayload === 'object' && typeOrPayload !== null) {
+      if (typeOrPayload.type) type = typeOrPayload.type
+      if (typeOrPayload.question_text) questionText = typeOrPayload.question_text
+    }
+
+    let defaultOptions: Json | null = null
+    if (type === 'multiple_choice') {
+      defaultOptions = [
+        { id: 'opt_1', text: 'Opsi 1' },
+        { id: 'opt_2', text: 'Opsi 2' },
+      ]
+    } else if (type === 'rating') {
+      defaultOptions = { max_rating: 5 }
+    }
 
     try {
-      const { data, error: qErr } = await supabase
+      const { data, error: err } = await supabase
         .from('questions')
         .insert({
           section_id: sectionId,
-          question_text: payload?.question_text || 'Pertanyaan Baru',
-          type: payload?.type || 'short_text',
-          is_required: payload?.is_required ?? true,
-          options: (payload?.options as Json) ?? (defaultOptions.length > 0 ? (defaultOptions as unknown as Json) : null),
-          order_index: newOrderIndex,
+          question_text: questionText,
+          type,
+          is_required: true,
+          options: defaultOptions,
+          order_index: newIndex,
         })
         .select()
         .single()
 
-      if (qErr || !data) {
-        error.value = qErr?.message || 'Gagal membuat pertanyaan baru.'
+      if (err || !data) {
+        error.value = err?.message || 'Gagal menambahkan pertanyaan.'
         saving.value = false
         return null
       }
 
-      questions.value = [...questions.value, data]
+      questions.value.push(data)
       saving.value = false
       return data
     } catch (err: unknown) {
@@ -356,22 +356,23 @@ export function useSurveyBuilder() {
   }
 
   /**
-   * Update an existing question
+   * Update Question details
    */
-  async function updateQuestion(questionId: string, payload: Partial<QuestionRow>): Promise<boolean> {
+  async function updateQuestion(
+    questionId: string,
+    updates: Partial<Omit<QuestionRow, 'id' | 'section_id' | 'created_at' | 'updated_at'>>
+  ): Promise<boolean> {
     saving.value = true
-    error.value = null
-
     try {
-      const { data, error: qErr } = await supabase
+      const { data, error: err } = await supabase
         .from('questions')
-        .update(payload)
+        .update(updates)
         .eq('id', questionId)
         .select()
         .single()
 
-      if (qErr || !data) {
-        error.value = qErr?.message || 'Gagal memperbarui pertanyaan.'
+      if (err || !data) {
+        error.value = err?.message || 'Gagal mengedit pertanyaan.'
         saving.value = false
         return false
       }
@@ -384,27 +385,25 @@ export function useSurveyBuilder() {
       saving.value = false
       return true
     } catch (err: unknown) {
-      error.value = err instanceof Error ? err.message : 'Kesalahan memperbarui pertanyaan.'
+      error.value = err instanceof Error ? err.message : 'Kesalahan mengupdate pertanyaan.'
       saving.value = false
       return false
     }
   }
 
   /**
-   * Delete a question
+   * Delete Question
    */
   async function deleteQuestion(questionId: string): Promise<boolean> {
     saving.value = true
-    error.value = null
-
     try {
-      const { error: delErr } = await supabase
+      const { error: err } = await supabase
         .from('questions')
         .delete()
         .eq('id', questionId)
 
-      if (delErr) {
-        error.value = delErr.message
+      if (err) {
+        error.value = err.message
         saving.value = false
         return false
       }
@@ -422,65 +421,57 @@ export function useSurveyBuilder() {
   }
 
   /**
-   * Create or replace a section_logic rule
+   * Create Logic Branching Rule
    */
-  async function createLogicRule(payload: {
-    source_section_id: string
-    question_id: string
-    operator: LogicOperator
-    condition_value?: Json
-    target_section_id: string
-  }): Promise<SectionLogicRow | null> {
+  async function createLogicRule(
+    payload: Omit<SectionLogicRow, 'id' | 'created_at' | 'updated_at' | 'survey_id'>
+  ): Promise<SectionLogicRow | null> {
     if (!survey.value) return null
-
     saving.value = true
-    error.value = null
 
     try {
-      const { data, error: logicErr } = await supabase
+      const { data, error: err } = await supabase
         .from('section_logic')
         .insert({
           survey_id: survey.value.id,
           source_section_id: payload.source_section_id,
           question_id: payload.question_id,
           operator: payload.operator,
-          condition_value: payload.condition_value ?? null,
+          condition_value: payload.condition_value,
           target_section_id: payload.target_section_id,
         })
         .select()
         .single()
 
-      if (logicErr || !data) {
-        error.value = logicErr?.message || 'Gagal menambahkan aturan alur logika.'
+      if (err || !data) {
+        error.value = err?.message || 'Gagal membuat aturan logika.'
         saving.value = false
         return null
       }
 
-      logicRules.value = [...logicRules.value, data]
+      logicRules.value.push(data)
       saving.value = false
       return data
     } catch (err: unknown) {
-      error.value = err instanceof Error ? err.message : 'Kesalahan menambahkan aturan alur.'
+      error.value = err instanceof Error ? err.message : 'Kesalahan membuat aturan logika.'
       saving.value = false
       return null
     }
   }
 
   /**
-   * Delete a section logic rule
+   * Delete Logic Rule
    */
   async function deleteLogicRule(ruleId: string): Promise<boolean> {
     saving.value = true
-    error.value = null
-
     try {
-      const { error: delErr } = await supabase
+      const { error: err } = await supabase
         .from('section_logic')
         .delete()
         .eq('id', ruleId)
 
-      if (delErr) {
-        error.value = delErr.message
+      if (err) {
+        error.value = err.message
         saving.value = false
         return false
       }
@@ -490,6 +481,34 @@ export function useSurveyBuilder() {
       return true
     } catch (err: unknown) {
       error.value = err instanceof Error ? err.message : 'Kesalahan menghapus aturan logika.'
+      saving.value = false
+      return false
+    }
+  }
+
+  /**
+   * Update survey active status directly from builder
+   */
+  async function toggleSurveyStatus(isActive: boolean): Promise<boolean> {
+    if (!survey.value) return false
+    saving.value = true
+    try {
+      const { error: err } = await supabase
+        .from('surveys')
+        .update({ is_active: isActive })
+        .eq('id', survey.value.id)
+
+      if (err) {
+        error.value = err.message
+        saving.value = false
+        return false
+      }
+
+      survey.value.is_active = isActive
+      saving.value = false
+      return true
+    } catch (err: unknown) {
+      error.value = err instanceof Error ? err.message : 'Gagal memperbarui status survei.'
       saving.value = false
       return false
     }
@@ -514,5 +533,6 @@ export function useSurveyBuilder() {
     deleteQuestion,
     createLogicRule,
     deleteLogicRule,
+    toggleSurveyStatus,
   }
 }

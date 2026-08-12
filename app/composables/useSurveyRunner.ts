@@ -1,62 +1,54 @@
-import { computed } from 'vue'
+import { ref, computed } from 'vue'
 import type { Database } from '~/types/supabase'
 
-type Survey = Database['public']['Tables']['surveys']['Row']
-type Section = Database['public']['Tables']['sections']['Row']
-type Question = Database['public']['Tables']['questions']['Row']
-type SectionLogic = Database['public']['Tables']['section_logic']['Row']
-
-export interface RunnerQuestionOption {
-  id: string
-  text: string
-}
-
-export interface SectionAnswerRecord {
-  stepIndex: number
-  sectionId: string
-  iterationIndex: number
-  questionId: string
-  value: any
-}
+export type SurveyRow = Database['public']['Tables']['surveys']['Row']
+export type SectionRow = Database['public']['Tables']['sections']['Row']
+export type QuestionRow = Database['public']['Tables']['questions']['Row']
+export type SectionLogicRow = Database['public']['Tables']['section_logic']['Row']
 
 export function useSurveyRunner() {
   const supabase = useSupabaseClient<Database>()
 
-  const survey = useState<Survey | null>('runner_survey', () => null)
-  const sections = useState<Section[]>('runner_sections', () => [])
-  const allQuestions = useState<Question[]>('runner_all_questions', () => [])
-  const sectionLogics = useState<SectionLogic[]>('runner_logics', () => [])
+  const survey = ref<SurveyRow | null>(null)
+  const sections = ref<SectionRow[]>([])
+  const allQuestions = ref<QuestionRow[]>([])
+  const allLogicRules = ref<SectionLogicRow[]>([])
 
-  const currentSectionId = useState<string | null>('runner_current_section_id', () => null)
-  const answers = useState<Record<string, any>>('runner_answers', () => ({}))
-  const accumulatedRecords = useState<SectionAnswerRecord[]>('runner_accumulated_records', () => [])
-  const navigationHistory = useState<string[]>('runner_nav_history', () => [])
-  const completedCategories = useState<string[]>('runner_completed_categories', () => [])
+  const currentSectionId = ref<string | null>(null)
+  const answers = ref<Record<string, any>>({})
+  const navigationHistory = ref<string[]>([])
+  const completedCategories = ref<string[]>([])
 
-  const isLoading = useState<boolean>('runner_is_loading', () => true)
-  const isSubmitted = useState<boolean>('runner_is_submitted', () => false)
-  const isSubmitting = useState<boolean>('runner_is_submitting', () => false)
-  const errorMessage = useState<string | null>('runner_error_message', () => null)
-  const validationErrors = useState<Record<string, string>>('runner_validation_errors', () => ({}))
+  const isLoading = ref(true)
+  const isSubmitted = ref(false)
+  const isSubmitting = ref(false)
+  const errorMessage = ref<string | null>(null)
+  const validationErrors = ref<Record<string, string>>({})
 
-  // Load Survey Metadata, Sections, Questions (with Session Resolution & Debug Logs), and Logic Rules
+  const currentSection = computed(() => {
+    if (!currentSectionId.value) return null
+    return sections.value.find((s) => s.id === currentSectionId.value) || null
+  })
+
+  const currentQuestions = computed(() => {
+    if (!currentSectionId.value) return []
+    return allQuestions.value.filter((q) => q.section_id === currentSectionId.value)
+  })
+
+  /**
+   * Fetch survey structure (Survey, Sections, Questions, Logic Rules)
+   */
   async function loadSurveyAndSections(surveyId: string, isPreview = false) {
+    if (!surveyId) {
+      errorMessage.value = 'ID survei tidak valid.'
+      isLoading.value = false
+      return
+    }
+
     isLoading.value = true
     errorMessage.value = null
-    allQuestions.value = []
-    sections.value = []
-
-    console.log('[SurveyRunner Debug] Starting loadSurveyAndSections for surveyId:', surveyId, 'isPreview:', isPreview)
 
     try {
-      // 0. Explicitly ensure Supabase Auth session is loaded
-      try {
-        const { data: sessionData } = await supabase.auth.getSession()
-        console.log('[SurveyRunner Debug] Auth session user:', sessionData.session?.user?.email || 'Guest / Anon')
-      } catch (authErr) {
-        console.warn('[SurveyRunner Debug] Auth session error:', authErr)
-      }
-
       // 1. Fetch survey metadata
       const { data: surveyData, error: surveyError } = await supabase
         .from('surveys')
@@ -69,11 +61,12 @@ export function useSurveyRunner() {
         throw new Error('Survei tidak ditemukan')
       }
 
+      survey.value = surveyData
+
       if (!surveyData.is_active && !isPreview) {
         throw new Error('Survei ini sedang tidak aktif')
       }
 
-      survey.value = surveyData
       console.log('[SurveyRunner Debug] Survey loaded:', surveyData.title, 'is_active:', surveyData.is_active)
 
       // 2. Fetch sections ordered by order_index
@@ -84,21 +77,23 @@ export function useSurveyRunner() {
         .order('order_index', { ascending: true })
 
       if (sectionError) {
-        console.error('[SurveyRunner Debug] Sections fetch error:', sectionError)
-        throw sectionError
+        console.error('[SurveyRunner Debug] Section fetch error:', sectionError)
+        throw new Error('Gagal memuat section survei')
       }
 
-      const loadedSections: Section[] = sectionData || []
-      sections.value = loadedSections
-      console.log('[SurveyRunner Debug] Loaded sections count:', loadedSections.length, loadedSections)
+      sections.value = sectionData || []
 
-      // 3. Fetch questions with multi-layer query strategy
-      const sectionIds = loadedSections.map((s) => s.id)
-      let loadedQuestions: Question[] = []
+      if (sections.value.length === 0) {
+        throw new Error('Survei tidak memiliki section.')
+      }
 
+      // 3. Set starting section
+      const startId = surveyData.start_section_id || sections.value[0]?.id
+      currentSectionId.value = startId
+
+      // 4. Fetch all questions for these sections
+      const sectionIds = sections.value.map((s) => s.id)
       if (sectionIds.length > 0) {
-        console.log('[SurveyRunner Debug] Fetching questions for sectionIds:', sectionIds)
-        // Query 1: Direct query on questions table by section_id IN sectionIds
         const { data: questionData, error: questionError } = await supabase
           .from('questions')
           .select('*')
@@ -106,374 +101,227 @@ export function useSurveyRunner() {
           .order('order_index', { ascending: true })
 
         if (questionError) {
-          console.warn('[SurveyRunner Debug] Direct questions query error:', questionError)
+          console.error('[SurveyRunner Debug] Question fetch error:', questionError)
+          throw new Error('Gagal memuat pertanyaan survei')
         }
 
-        if (!questionError && questionData && questionData.length > 0) {
-          loadedQuestions = questionData
-          console.log('[SurveyRunner Debug] Direct questions query returned count:', questionData.length, questionData)
-        } else {
-          console.log('[SurveyRunner Debug] Attempting Query 2 Fallback (Nested join on sections)')
-          // Query 2 Fallback: PostgREST nested join on sections
-          const { data: nestedData, error: nestedError } = await supabase
-            .from('sections')
-            .select(`
-              id,
-              questions (*)
-            `)
-            .eq('survey_id', surveyId)
-
-          if (nestedError) {
-            console.error('[SurveyRunner Debug] Nested join query error:', nestedError)
-          }
-
-          if (nestedData) {
-            for (const sec of nestedData) {
-              if (Array.isArray((sec as any).questions)) {
-                loadedQuestions.push(...((sec as any).questions as Question[]))
-              }
-            }
-            console.log('[SurveyRunner Debug] Nested join query extracted count:', loadedQuestions.length, loadedQuestions)
-          }
-        }
+        allQuestions.value = questionData || []
       }
 
-      allQuestions.value = loadedQuestions
-      console.log('[SurveyRunner Debug] Total allQuestions loaded into state:', allQuestions.value.length, allQuestions.value)
-
-      // 4. Fetch logic rules
+      // 5. Fetch section logic rules
       const { data: logicData, error: logicError } = await supabase
         .from('section_logic')
         .select('*')
         .eq('survey_id', surveyId)
 
-      if (!logicError && logicData) {
-        sectionLogics.value = logicData
-      } else {
-        sectionLogics.value = []
+      if (!logicError) {
+        allLogicRules.value = logicData || []
       }
-
-      // Determine initial active section
-      const hasStartSection = loadedSections.some((s) => s.id === surveyData.start_section_id)
-      const validStartId = hasStartSection
-        ? surveyData.start_section_id
-        : (loadedSections && loadedSections[0]?.id) || null
-
-      currentSectionId.value = validStartId
-      console.log('[SurveyRunner Debug] Active Section ID set to:', validStartId)
-
-      navigationHistory.value = []
-      completedCategories.value = []
-      answers.value = {}
-      accumulatedRecords.value = []
-      validationErrors.value = {}
-      isSubmitted.value = false
-    } catch (err: any) {
-      console.error('[SurveyRunner Debug] Error in loadSurveyAndSections:', err)
-      errorMessage.value = err.message || 'Gagal memuat data survei'
+    } catch (err: unknown) {
+      errorMessage.value = err instanceof Error ? err.message : 'Terjadi kesalahan saat memuat survei.'
     } finally {
       isLoading.value = false
     }
   }
 
-  // Set individual answer and clear error for that question
   function setAnswer(questionId: string, value: any) {
-    answers.value = {
-      ...answers.value,
-      [questionId]: value,
-    }
-
+    answers.value[questionId] = value
     if (validationErrors.value[questionId]) {
-      const updated = { ...validationErrors.value }
-      delete updated[questionId]
-      validationErrors.value = updated
+      delete validationErrors.value[questionId]
     }
   }
 
-  // Active section computing
-  const currentSection = computed(() => {
-    if (!currentSectionId.value) return null
-    return sections.value.find((s) => String(s.id).trim().toLowerCase() === String(currentSectionId.value).trim().toLowerCase()) || null
-  })
+  function validateCurrentSection(): boolean {
+    validationErrors.value = {}
+    let isValid = true
 
-  // Questions for active section
-  const currentQuestions = computed(() => {
-    if (!currentSectionId.value) return []
-    const targetSecId = String(currentSectionId.value).trim().toLowerCase()
-    const filtered = allQuestions.value
-      .filter((q) => String(q.section_id).trim().toLowerCase() === targetSecId)
-      .sort((a, b) => (a.order_index ?? 0) - (b.order_index ?? 0))
-    console.log('[SurveyRunner Debug] currentQuestions computed for section:', targetSecId, 'Result count:', filtered.length, filtered)
-    return filtered
-  })
-
-  // Evaluate rule operator
-  function evaluateRule(rule: SectionLogic, val: any): boolean {
-    if (rule.operator === 'filled') {
-      if (val === null || val === undefined || val === '') return false
-      if (Array.isArray(val) && val.length === 0) return false
-      return true
-    }
-
-    if (val === null || val === undefined || val === '') return false
-
-    const condVal = rule.condition_value
-
-    if (rule.operator === 'selected') {
-      if (typeof val === 'object' && val !== null) {
-        if (condVal && typeof condVal === 'object' && 'id' in (condVal as any)) {
-          return val.id === (condVal as any).id
-        }
-        if (val.id && typeof condVal === 'string') {
-          return val.id === condVal
-        }
-        if (val.text && typeof condVal === 'string') {
-          return val.text === condVal
+    for (const q of currentQuestions.value) {
+      if (q.is_required) {
+        const val = answers.value[q.id]
+        if (val === undefined || val === null || val === '') {
+          validationErrors.value[q.id] = 'Pertanyaan ini wajib diisi'
+          isValid = false
+        } else if (typeof val === 'object' && !val.id && !val.text) {
+          validationErrors.value[q.id] = 'Pertanyaan ini wajib diisi'
+          isValid = false
         }
       }
-      if (typeof condVal === 'object' && condVal !== null && 'id' in (condVal as any)) {
-        return String(val) === String((condVal as any).id)
-      }
-      return String(val) === String(condVal)
     }
 
-    if (rule.operator === 'equals') {
-      const valStr = typeof val === 'object' ? JSON.stringify(val) : String(val).trim().toLowerCase()
-      const condStr = typeof condVal === 'object' ? JSON.stringify(condVal) : String(condVal).trim().toLowerCase()
-      return valStr === condStr
-    }
-
-    if (rule.operator === 'not_equals') {
-      const valStr = typeof val === 'object' ? JSON.stringify(val) : String(val).trim().toLowerCase()
-      const condStr = typeof condVal === 'object' ? JSON.stringify(condVal) : String(condVal).trim().toLowerCase()
-      return valStr !== condStr
-    }
-
-    if (rule.operator === 'greater_than') {
-      const numVal = Number(val)
-      const numCond = Number(condVal)
-      if (isNaN(numVal) || isNaN(numCond)) return false
-      return numVal > numCond
-    }
-
-    if (rule.operator === 'less_than') {
-      const numVal = Number(val)
-      const numCond = Number(condVal)
-      if (isNaN(numVal) || isNaN(numCond)) return false
-      return numVal < numCond
-    }
-
-    return false
+    return isValid
   }
 
-  // Calculate target section for a section based on rules and fallback
-  function getNextSectionId(secId: string): string | null {
-    const sec = sections.value.find((s) => String(s.id).trim().toLowerCase() === String(secId).trim().toLowerCase())
-    if (!sec || sec.is_end_section) return null
+  function evaluateRule(rule: SectionLogicRow, userAns: any): boolean {
+    if (userAns === undefined || userAns === null) return false
+    let answerText = ''
+    if (typeof userAns === 'object' && userAns !== null) {
+      answerText = userAns.id || userAns.text || ''
+    } else {
+      answerText = String(userAns)
+    }
+    const condVal = String(rule.condition_value || '')
 
-    const rulesForSec = sectionLogics.value.filter((l) => String(l.source_section_id).trim().toLowerCase() === String(secId).trim().toLowerCase())
+    switch (rule.operator) {
+      case 'selected':
+      case 'equals':
+        return answerText.toLowerCase() === condVal.toLowerCase()
+      case 'not_equals':
+        return answerText.toLowerCase() !== condVal.toLowerCase()
+      case 'filled':
+        return answerText.trim() !== ''
+      case 'greater_than':
+        return Number(answerText) > Number(condVal)
+      case 'less_than':
+        return Number(answerText) < Number(condVal)
+      default:
+        return false
+    }
+  }
 
-    for (const rule of rulesForSec) {
+  function evaluateLogicRules(sourceSectionId: string): string | null {
+    const rules = allLogicRules.value.filter((r) => r.source_section_id === sourceSectionId)
+    if (rules.length === 0) return null
+
+    for (const rule of rules) {
       const userAns = answers.value[rule.question_id]
       if (evaluateRule(rule, userAns)) {
         return rule.target_section_id
       }
     }
 
-    if (sec.default_next_section_id) {
+    return null
+  }
+
+  function getNextSectionId(currentSecId: string): string | null {
+    const logicTarget = evaluateLogicRules(currentSecId)
+    if (logicTarget) {
+      return logicTarget
+    }
+
+    const sec = sections.value.find((s) => s.id === currentSecId)
+    if (sec && sec.default_next_section_id) {
       return sec.default_next_section_id
     }
 
-    // Natural linear fallback to next section by order_index
-    const currentIndex = sections.value.findIndex((s) => String(s.id).trim().toLowerCase() === String(secId).trim().toLowerCase())
-    if (currentIndex >= 0 && currentIndex < sections.value.length - 1) {
+    const currentIndex = sections.value.findIndex((s) => s.id === currentSecId)
+    if (currentIndex !== -1 && currentIndex + 1 < sections.value.length) {
       return sections.value[currentIndex + 1].id
     }
 
     return null
   }
 
-  // Frontend validation for active section questions
-  function validateCurrentSection(): boolean {
-    const errors: Record<string, string> = {}
-    let isValid = true
-
-    for (const q of currentQuestions.value) {
-      if (q.is_required) {
-        const val = answers.value[q.id]
-        const isEmpty =
-          val === undefined ||
-          val === null ||
-          val === '' ||
-          (Array.isArray(val) && val.length === 0) ||
-          (typeof val === 'object' && Object.keys(val).length === 0)
-
-        if (isEmpty) {
-          errors[q.id] = 'Pertanyaan ini wajib diisi'
-          isValid = false
-        }
-      }
-    }
-
-    validationErrors.value = errors
-    return isValid
-  }
-
-  // Helper to snapshot active section's answers into accumulatedRecords
-  function snapshotCurrentSectionAnswers() {
-    if (!currentSectionId.value) return
-
-    const curSecId = currentSectionId.value
-    const stepIdx = navigationHistory.value.length + 1
-    const iterationIdx = navigationHistory.value.filter((id) => id === curSecId).length + 1
-
-    // Remove any previously recorded answers for the exact same stepIndex
-    accumulatedRecords.value = accumulatedRecords.value.filter((r) => r.stepIndex !== stepIdx)
-
-    for (const q of currentQuestions.value) {
-      const val = answers.value[q.id]
-      if (val !== undefined && val !== null && val !== '') {
-        accumulatedRecords.value.push({
-          stepIndex: stepIdx,
-          sectionId: curSecId,
-          iterationIndex: iterationIdx,
-          questionId: q.id,
-          value: JSON.parse(JSON.stringify(val)),
-        })
-      }
-    }
-  }
-
-  // Move to next section
   function goToNextSection(): boolean {
-    if (!currentSectionId.value) return false
-
     if (!validateCurrentSection()) {
       return false
     }
 
-    // 1. Snapshot current section answers
-    snapshotCurrentSectionAnswers()
+    if (!currentSectionId.value) return false
 
-    // 2. Collect choices for state elimination (category tracking)
+    // Track completed categories
     for (const q of currentQuestions.value) {
-      if (q.type === 'multiple_choice') {
+      if (q.type === 'multiple_choice' && answers.value[q.id]) {
         const val = answers.value[q.id]
-        if (val) {
-          const optId = typeof val === 'object' ? val.id : String(val)
-          const optText = typeof val === 'object' ? val.text : String(val)
-          const isGenericTrigger = ['ya', 'tidak', 'yes', 'no'].includes(String(optText).trim().toLowerCase())
-
-          if (!isGenericTrigger) {
-            const uniqueKey = `${q.id}_${optId}`
-            if (!completedCategories.value.includes(uniqueKey)) {
-              completedCategories.value.push(uniqueKey)
-            }
-            if (optText && !completedCategories.value.includes(optText)) {
-              completedCategories.value.push(optText)
-            }
+        const optText = typeof val === 'object' ? val.text || val.id : String(val)
+        const isGeneric = ['ya', 'tidak', 'yes', 'no'].includes(optText.trim().toLowerCase())
+        if (!isGeneric) {
+          const uniqueKey = `${q.id}_${typeof val === 'object' ? val.id : val}`
+          if (!completedCategories.value.includes(uniqueKey)) {
+            completedCategories.value.push(uniqueKey)
+          }
+          if (!completedCategories.value.includes(optText)) {
+            completedCategories.value.push(optText)
           }
         }
       }
     }
 
     const nextId = getNextSectionId(currentSectionId.value)
-
-    navigationHistory.value.push(currentSectionId.value)
-    currentSectionId.value = nextId
-
-    // 3. Prepare answers for next section (clear old loop values if starting fresh iteration)
     if (nextId) {
-      const nextQuestions = allQuestions.value.filter((q) => q.section_id === nextId)
-      for (const q of nextQuestions) {
-        // Clear active selection if looping back so user gets fresh inputs for new iteration
-        delete answers.value[q.id]
-      }
-    }
-
-    return true
-  }
-
-  // Move to previous section
-  function goToPreviousSection(): boolean {
-    if (navigationHistory.value.length === 0) return false
-
-    const prevId = navigationHistory.value.pop()
-    if (prevId) {
-      currentSectionId.value = prevId
-      validationErrors.value = {}
-
-      // Restore active section answers from accumulatedRecords for the previous step
-      const stepIdx = navigationHistory.value.length + 1
-      const stepRecords = accumulatedRecords.value.filter((r) => r.stepIndex === stepIdx)
-      for (const rec of stepRecords) {
-        answers.value[rec.questionId] = rec.value
-      }
-
+      navigationHistory.value.push(currentSectionId.value)
+      currentSectionId.value = nextId
       return true
     }
+
     return false
   }
 
-  // Atomic Submission helper
-  async function submitSurvey(isPreview = false): Promise<boolean> {
-    if (!survey.value) return false
+  function goToPreviousSection() {
+    if (navigationHistory.value.length > 0) {
+      const prevId = navigationHistory.value.pop()
+      if (prevId) {
+        currentSectionId.value = prevId
+      }
+    }
+  }
 
+  async function submitSurvey(isPreview = false): Promise<boolean> {
     if (!validateCurrentSection()) {
       return false
     }
 
-    // Snapshot final section answers before submitting
-    snapshotCurrentSectionAnswers()
+    if (!survey.value) {
+      errorMessage.value = 'Data survei tidak ditemukan.'
+      return false
+    }
 
     isSubmitting.value = true
-    errorMessage.value = null
+
+    if (isPreview) {
+      console.log('[SurveyRunner Preview Mode] Survey submit simulated with answers:', answers.value)
+      isSubmitted.value = true
+      isSubmitting.value = false
+      return true
+    }
 
     try {
-      if (isPreview) {
-        // Preview bypass database insertion
-        await new Promise((res) => setTimeout(res, 400))
-        isSubmitted.value = true
-        return true
-      }
-
-      // 1. Insert into public.responses
-      const { data: respData, error: respError } = await supabase
+      // 1. Insert new response record into DB
+      const { data: respData, error: respErr } = await supabase
         .from('responses')
         .insert({
           survey_id: survey.value.id,
           submitted_at: new Date().toISOString(),
         })
-        .select('id')
+        .select()
         .single()
 
-      if (respError || !respData) {
-        throw new Error(respError?.message || 'Gagal menyimpan respon survei')
+      if (respErr || !respData) {
+        console.error('[SurveyRunner Debug] Response insert error:', respErr)
+        throw new Error(respErr?.message || 'Gagal menyimpan data respon.')
       }
 
-      const responseId = respData.id
+      // 2. Insert all answer records into DB
+      const answerRowsToInsert = Object.entries(answers.value).map(([questionId, rawVal]) => {
+        let answer_value: any = rawVal
+        if (typeof rawVal === 'string' || typeof rawVal === 'number' || typeof rawVal === 'boolean') {
+          answer_value = rawVal
+        } else if (rawVal !== null && rawVal !== undefined) {
+          answer_value = JSON.stringify(rawVal)
+        }
 
-      // 2. Prepare and insert accumulated multi-iteration answers into public.answers
-      const answerRows = accumulatedRecords.value
-        .filter((rec) => rec.value !== undefined && rec.value !== null && rec.value !== '')
-        .map((rec) => ({
-          response_id: responseId,
-          question_id: rec.questionId,
-          answer_value: rec.value,
-          iteration_index: rec.iterationIndex,
-        }))
+        return {
+          response_id: respData.id,
+          question_id: questionId,
+          answer_value,
+          iteration_index: 1,
+        }
+      })
 
-      if (answerRows.length > 0) {
-        const { error: ansError } = await supabase.from('answers').insert(answerRows)
-        if (ansError) {
-          throw new Error(ansError.message || 'Gagal menyimpan jawaban survei')
+      if (answerRowsToInsert.length > 0) {
+        const { error: ansErr } = await supabase
+          .from('answers')
+          .insert(answerRowsToInsert)
+
+        if (ansErr) {
+          console.error('[SurveyRunner Debug] Answers insert error:', ansErr)
+          throw new Error(ansErr.message || 'Gagal menyimpan rincian jawaban.')
         }
       }
 
       isSubmitted.value = true
       return true
-    } catch (err: any) {
-      errorMessage.value = err.message || 'Gagal mengirimkan survei'
+    } catch (err: unknown) {
+      errorMessage.value = err instanceof Error ? err.message : 'Gagal mengirimkan respon survei.'
       return false
     } finally {
       isSubmitting.value = false
@@ -484,12 +332,12 @@ export function useSurveyRunner() {
     survey,
     sections,
     allQuestions,
-    sectionLogics,
+    allLogicRules,
+    sectionLogics: allLogicRules,
     currentSectionId,
     currentSection,
     currentQuestions,
     answers,
-    accumulatedRecords,
     navigationHistory,
     completedCategories,
     isLoading,
@@ -500,8 +348,8 @@ export function useSurveyRunner() {
     loadSurveyAndSections,
     setAnswer,
     evaluateRule,
-    getNextSectionId,
     validateCurrentSection,
+    getNextSectionId,
     goToNextSection,
     goToPreviousSection,
     submitSurvey,

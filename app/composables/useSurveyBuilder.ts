@@ -1,6 +1,6 @@
 import type { Database, Json } from '~/types/supabase'
 
-export type SurveyRow = Database['public']['Tables']['surveys']['Row']
+export type BuilderSurveyRow = Database['public']['Tables']['surveys']['Row']
 export type SectionRow = Database['public']['Tables']['sections']['Row']
 export type QuestionRow = Database['public']['Tables']['questions']['Row']
 export type SectionLogicRow = Database['public']['Tables']['section_logic']['Row']
@@ -19,7 +19,7 @@ const positionDebounceTimers: Record<string, ReturnType<typeof setTimeout>> = {}
 export function useSurveyBuilder() {
   const supabase = useSupabaseClient<Database>()
 
-  const survey = useState<SurveyRow | null>('builder_survey', () => null)
+  const survey = useState<BuilderSurveyRow | null>('builder_survey', () => null)
   const sections = useState<SectionRow[]>('builder_sections', () => [])
   const questions = useState<QuestionRow[]>('builder_questions', () => [])
   const logicRules = useState<SectionLogicRow[]>('builder_logic_rules', () => [])

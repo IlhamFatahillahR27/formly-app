@@ -6,37 +6,39 @@
         <span class="text-primary-600 dark:text-primary-400">⚡ Formly</span>
       </NuxtLink>
 
-      <!-- Auth State & Actions -->
+      <!-- Auth State & Actions with ClientOnly wrapper to prevent hydration mismatch -->
       <div class="flex items-center gap-4">
-        <template v-if="user">
-          <NuxtLink 
-            to="/admin/dashboard" 
-            class="text-sm font-medium text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white"
-          >
-            Dashboard
-          </NuxtLink>
-          <div class="flex items-center gap-2">
-            <span class="text-xs bg-gray-100 dark:bg-gray-800 px-2.5 py-1 rounded-full text-gray-700 dark:text-gray-300 font-mono">
-              {{ user.email }}
-            </span>
-            <UButton 
-              color="error" 
-              variant="soft" 
-              size="xs" 
-              :loading="isLoggingOut"
-              @click="handleLogout"
+        <ClientOnly>
+          <template v-if="user">
+            <NuxtLink 
+              to="/admin/dashboard" 
+              class="text-sm font-medium text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white"
             >
-              Logout
-            </UButton>
-          </div>
-        </template>
-        <template v-else-if="route.path !== '/admin/login'">
-          <NuxtLink to="/admin/login">
-            <UButton color="primary" size="sm">
-              Admin Login
-            </UButton>
-          </NuxtLink>
-        </template>
+              Dashboard
+            </NuxtLink>
+            <div class="flex items-center gap-2">
+              <span class="text-xs bg-gray-100 dark:bg-gray-800 px-2.5 py-1 rounded-full text-gray-700 dark:text-gray-300 font-mono">
+                {{ user.email }}
+              </span>
+              <UButton 
+                color="error" 
+                variant="soft" 
+                size="xs" 
+                :loading="isLoggingOut"
+                @click="handleLogout"
+              >
+                Logout
+              </UButton>
+            </div>
+          </template>
+          <template v-else-if="route.path !== '/admin/login'">
+            <NuxtLink to="/admin/login">
+              <UButton color="primary" size="sm">
+                Admin Login
+              </UButton>
+            </NuxtLink>
+          </template>
+        </ClientOnly>
       </div>
     </div>
   </header>

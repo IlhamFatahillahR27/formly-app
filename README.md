@@ -64,14 +64,19 @@ formly-app/
 │   │   │   └── nodes/
 │   │   │       └── SectionNode.vue     # Custom Vue Flow node with collapsible sections
 │   │   └── survey/
-│   │       └── QuestionEditor.vue      # Question parameters, choices & logic rules editor
+│   │       ├── QuestionEditor.vue      # Question parameters, choices & logic rules editor
+│   │       ├── QuestionInput.vue       # Guest question input renderer & validation
+│   │       └── PreviewBanner.vue       # Floating banner for interactive preview mode
 │   ├── composables/
 │   │   ├── useSurveys.ts               # Typed survey CRUD composable
-│   │   └── useSurveyBuilder.ts        # Single source of truth builder state & debounced position save
+│   │   ├── useSurveyBuilder.ts        # Single source of truth builder state & debounced position save
+│   │   └── useSurveyRunner.ts         # Guest survey execution, dynamic logic engine & submission
 │   ├── middleware/
 │   │   └── auth.ts           # Route guard middleware for /admin/*
 │   └── pages/
 │       ├── index.vue         # Landing page
+│       ├── survey/
+│       │   └── [id].vue      # Public guest survey execution & preview page
 │       └── admin/
 │           ├── login.vue     # Admin login page
 │           ├── dashboard.vue # Admin survey dashboard (grid, search, filter, status toggle)
@@ -111,6 +116,13 @@ formly-app/
 - **Canvas Flow Designer (`CanvasFlowDesigner.vue` & `SectionNode.vue`)**: Drag-and-drop visual node map powered by `@vue-flow/core` featuring custom collapsible `SectionNode` cards, interactive connecting edge arrows, zoom/pan controls, background grid, and mini-map.
 - **Debounced Position Saving & Logic Branching**: Automatically saves node canvas coordinates (`position_x`, `position_y`) with a 500ms debounce buffer on `onNodeDragStop`. Interactive line drawing connects choice options or sections to create/update `section_logic` branching rules and fallback section routes.
 - **Builder Composable (`useSurveyBuilder.ts`)**: Serves as the Single Source of Truth managing reactive survey state, section CRUD, question CRUD, section logic rules, and debounced database persistence.
+
+### Guest Survey Execution & Dynamic Logic Engine (Phase 5)
+- **Public Survey Page (`/survey/[id]`)**: Accessible to unauthenticated guest users. Fetches active survey data, section sequence, questions, and section logic rules from Supabase. Features step progress tracking, required field validation, and responsive input components (`QuestionInput.vue`).
+- **Dynamic Navigation Engine**: Evaluates `section_logic` rules for operators (`selected`, `filled`, `equals`, `not_equals`, `greater_than`, `less_than`) based on guest inputs to calculate target sections (`target_section_id`). Falls back seamlessly to `default_next_section_id` when conditions are unfulfilled.
+- **State Elimination & Back Tracking**: Retains navigation history stack and `completedCategories` in state. When guests navigate back to category sections, previously completed choices are tracked and eliminated from subsequent selections.
+- **Atomic Database Submission & Sandbox Preview**: Sequentially creates a response record in `public.responses` and answer rows in `public.answers`. Automatically intercepts database calls during interactive preview mode (`?preview=true`) with a floating banner (`PreviewBanner.vue`) and simulated success toast.
+- **Runner Composable (`useSurveyRunner.ts`)**: Encapsulates guest state, navigation stack, validation errors, state elimination, dynamic logic rule evaluation, and atomic DB insertion/preview bypass.
 
 ---
 

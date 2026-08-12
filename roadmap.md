@@ -207,16 +207,16 @@ formly-app/
 **Goal:** Halaman publik untuk pengisian survei oleh Guest secara dinamis sesuai flow logika pertanyaan.
 
 #### 📝 Tasks Checklist
-- [ ] **Public Survey Page (`pages/survey/[id].vue`):**
+- [x] **Public Survey Page (`pages/survey/[id].vue`):**
   - Dapat diakses secara terbuka tanpa autentikasi (Guest mode)
   - Tampilan pertanyaan berdasarkan section aktif
-- [ ] **Dynamic Navigation Engine:**
+- [x] **Dynamic Navigation Engine:**
   - Evaluator `section_logic`: Jika opsi tertentu dipilih, hitung section tujuan (`target_section_id`)
   - Evaluator fallback: Gunakan `default_next_section_id` jika tidak ada kondisi yang terpenuhi
-- [ ] **State Elimination & Back Tracking:**
+- [x] **State Elimination & Back Tracking:**
   - Simpan array `completedCategories` dalam `useState`
   - Jika Guest menekan tombol Back ke section kategori, opsi yang sudah selesai otomatis dihilangkan dari pilihan
-- [ ] **Atomic Submission:**
+- [x] **Atomic Submission:**
   - Validasi front-end untuk pertanyaan `is_required = true`
   - Submit final menyimpan data ke `public.responses` dan `public.answers` secara atomic
 

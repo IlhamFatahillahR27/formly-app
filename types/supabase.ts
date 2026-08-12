@@ -254,6 +254,7 @@ export interface Database {
           response_id: string
           question_id: string
           answer_value: Json
+          iteration_index: number
           created_at: string
           updated_at: string
         }
@@ -262,6 +263,7 @@ export interface Database {
           response_id: string
           question_id: string
           answer_value: Json
+          iteration_index?: number
           created_at?: string
           updated_at?: string
         }
@@ -270,6 +272,7 @@ export interface Database {
           response_id?: string
           question_id?: string
           answer_value?: Json
+          iteration_index?: number
           created_at?: string
           updated_at?: string
         }

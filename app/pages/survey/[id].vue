@@ -57,9 +57,15 @@
           <!-- Survey Metadata & Section Header -->
           <div class="bg-white dark:bg-gray-900 rounded-2xl p-6 sm:p-8 border border-gray-200 dark:border-gray-800 shadow-sm space-y-4">
             <div>
-              <span class="text-xs font-semibold tracking-wider uppercase text-primary-600 dark:text-primary-400">
-                {{ survey.title }}
-              </span>
+              <div class="flex items-center justify-between">
+                <span class="text-xs font-semibold tracking-wider uppercase text-primary-600 dark:text-primary-400">
+                  {{ survey.title }}
+                </span>
+                <UBadge v-if="currentIterationCount > 1" color="amber" variant="soft" size="xs">
+                  Putaran Ke-{{ currentIterationCount }}
+                </UBadge>
+              </div>
+
               <h1 class="text-2xl sm:text-3xl font-extrabold text-gray-900 dark:text-white mt-1">
                 {{ currentSection.title }}
               </h1>
@@ -71,8 +77,11 @@
             <!-- Progress Bar -->
             <div class="pt-2">
               <div class="flex items-center justify-between text-xs text-gray-500 mb-1.5 font-medium">
-                <span>Langkah {{ navigationHistory.length + 1 }}</span>
+                <span>{{ stepLabel }}</span>
                 <span v-if="currentSection.is_end_section">Langkah Terakhir</span>
+                <span v-else-if="totalCategoryCount > 0 && completedCategories.length > 0" class="text-emerald-600 dark:text-emerald-400 font-semibold">
+                  {{ completedCategories.length }} / {{ totalCategoryCount }} Kategori Selesai
+                </span>
               </div>
               <div class="w-full bg-gray-100 dark:bg-gray-800 h-2 rounded-full overflow-hidden">
                 <div
@@ -156,6 +165,7 @@
 </template>
 
 <script setup lang="ts">
+import { computed, watch, onMounted } from 'vue'
 import QuestionInput from '~/components/survey/QuestionInput.vue'
 import PreviewBanner from '~/components/survey/PreviewBanner.vue'
 
@@ -166,6 +176,7 @@ const isPreview = computed(() => route.query.preview === 'true')
 const {
   survey,
   sections,
+  allQuestions,
   currentSection,
   currentQuestions,
   answers,
@@ -207,10 +218,60 @@ const hasNextSection = computed(() => {
   return nextId !== null
 })
 
+// Calculate total categories available in category choice question
+const totalCategoryCount = computed<number>(() => {
+  for (const q of allQuestions.value) {
+    if (q.type === 'multiple_choice' && q.options) {
+      let opts: any[] = []
+      if (Array.isArray(q.options)) opts = q.options
+      else if (typeof q.options === 'string') {
+        try { opts = JSON.parse(q.options) } catch {}
+      }
+      if (Array.isArray(opts) && opts.length > 1) {
+        const hasCategories = opts.some((o: any) => {
+          const txt = String(o.text || o.label || o).trim().toLowerCase()
+          return !['ya', 'tidak', 'yes', 'no'].includes(txt)
+        })
+        if (hasCategories) {
+          return opts.length
+        }
+      }
+    }
+  }
+  return 0
+})
+
+// Calculate current section's iteration count in looping history
+const currentIterationCount = computed<number>(() => {
+  if (!currentSection.value) return 1
+  const curId = currentSection.value.id
+  return navigationHistory.value.filter((id) => id === curId).length + 1
+})
+
+// Dynamic Step Label aware of looping and completed categories
+const stepLabel = computed(() => {
+  const stepNum = navigationHistory.value.length + 1
+  if (currentIterationCount.value > 1) {
+    return `Langkah ${stepNum} (Putaran Kategori Ke-${currentIterationCount.value})`
+  }
+  if (completedCategories.value.length > 0) {
+    return `Langkah ${stepNum} (Kategori Ke-${completedCategories.value.length + 1})`
+  }
+  return `Langkah ${stepNum}`
+})
+
+// Category-aware progress percentage calculation
 const progressPercentage = computed(() => {
-  const total = sections.value.length || 1
+  if (totalCategoryCount.value > 0) {
+    const done = completedCategories.value.length
+    const total = totalCategoryCount.value
+    const pct = Math.round((done / total) * 100)
+    return Math.min(Math.max(pct, 10), 100)
+  }
+
+  const totalSecs = sections.value.length || 1
   const currentStep = navigationHistory.value.length + 1
-  return Math.min(Math.round((currentStep / total) * 100), 100)
+  return Math.min(Math.round((currentStep / totalSecs) * 100), 100)
 })
 
 function handleNext() {

@@ -203,39 +203,43 @@ formly-app/
 
 ---
 
-### Phase 5: Guest Survey Execution & Dynamic Logic Engine (Module 4)
-**Goal:** Halaman publik untuk pengisian survei oleh Guest secara dinamis sesuai flow logika pertanyaan.
+### Phase 5: Guest Survey Execution, Google Reviews Rating & Multi-Iteration Persistence (Module 4)
+**Goal:** Halaman publik untuk pengisian survei oleh Guest secara dinamis sesuai flow logika pertanyaan, tampilan rating bintang gaya Google Reviews, kustomisasi max rating (1-10), pembukaan kuncian opsi, penyembunyian kategori terisi di loop section, dan penyimpanan data multi-iterasi.
 
 #### 📝 Tasks Checklist
 - [x] **Public Survey Page (`pages/survey/[id].vue`):**
   - Dapat diakses secara terbuka tanpa autentikasi (Guest mode)
   - Tampilan pertanyaan berdasarkan section aktif
+- [x] **Google Reviews Rating Component & Custom Max Rating:**
+  - Tampilan bintang interaktif gaya Google Reviews (`#fbbc04` warna kuning Google, efek hover highlight 1-N, animasi scale)
+  - Pengaturan jumlah maksimal bintang (1-10) di editor `QuestionEditor.vue` dengan pratinjau bintang langsung
 - [x] **Dynamic Navigation Engine:**
   - Evaluator `section_logic`: Jika opsi tertentu dipilih, hitung section tujuan (`target_section_id`)
   - Evaluator fallback: Gunakan `default_next_section_id` jika tidak ada kondisi yang terpenuhi
-- [x] **State Elimination & Back Tracking:**
-  - Simpan array `completedCategories` dalam `useState`
-  - Jika Guest menekan tombol Back ke section kategori, opsi yang sudah selesai otomatis dihilangkan dari pilihan
-- [x] **Atomic Submission:**
+- [x] **Unlocked Choices & State Elimination (Looping Section):**
+  - Opsi jawaban tetap terbuka dan dapat diklik tanpa kuncian `:disabled`
+  - Simpan array `completedCategories` dalam `useState`. Saat kembali ke Section Kategori, opsi kategori yang sudah pernah diselesaikan otomatis disembunyikan dari pilihan sehingga pengisi survei memilih kategori baru
+- [x] **Multi-Iteration Atomic Submission:**
   - Validasi front-end untuk pertanyaan `is_required = true`
-  - Submit final menyimpan data ke `public.responses` dan `public.answers` secara atomic
+  - Menyimpan snapshot pengisian per iterasi section (`accumulatedRecords`). Submit final menyimpan data ke `public.responses` dan `public.answers` dengan kolom `iteration_index` per putaran section tanpa menimpa respon terdahulu
 
 #### 🧪 Backend Testing Strategy
-- **Atomic Insert & Logic Engine Test (`tests/unit/survey-submission.spec.ts`):**
-  - Test fungsi penyimpan jawaban memastikan `response_id` yang sama digunakan pada seluruh record `answers`.
+- **Atomic Insert, Multi-Iteration & Logic Engine Test (`tests/unit/survey-submission.spec.ts`):**
+  - Test fungsi penyimpan jawaban memastikan `response_id` yang sama digunakan pada seluruh record `answers` dan `iteration_index` mencatat urutan putaran section.
   - Test evaluasi kueri logika untuk operator `equals`, `not_equals`, `greater_than`, `less_than`, dan `filled`.
 
 #### 🎨 UI Testing Strategy
 - **Guest Flow & Branching UI Test (`tests/component/guest-flow.spec.ts`):**
   - Test validasi form: Tombol Next/Submit terhalang jika pertanyaan wajib belum diisi.
   - Test navigasi bercabang: Memilih "Pilihan A" membawa pengguna ke Section 2, sedangkan "Pilihan B" membawa ke Section 3.
+  - Test komponen rating Google Reviews dan filtering opsi kategori yang sudah selesai pada section berulang.
 - **E2E Guest Experience Test (`tests/e2e/guest-survey.spec.ts`):**
-  - Guest membuka URL survei -> Mengisi pertanyaan -> Mengikuti branching flow -> Berhasil submit.
+  - Guest membuka URL survei -> Mengisi pertanyaan -> Mengikuti branching flow & section looping -> Berhasil submit multi-iterasi.
 
 ---
 
-### Phase 6: Interactive Sandbox Preview Mode (Module 3)
-**Goal:** Fitur pratinjau survei interaktif untuk Admin tanpa mengotori data asli di database.
+### Phase 6: Interactive Sandbox Preview Mode & Share QR Card Exporter (Module 3)
+**Goal:** Fitur pratinjau survei interaktif untuk Admin tanpa mengotori data asli di database serta modul penyebaran link survei & pembuatan kartu QR Code grafik estetik.
 
 #### 📝 Tasks Checklist
 - [x] **Preview Launcher:**
@@ -246,6 +250,10 @@ formly-app/
 - [x] **Database Bypass Handler:**
   - Interseptor submit pada mode preview untuk me-bypass `INSERT` ke Supabase
   - Tampilkan alert/modal simulasi sukses submit tanpa menyimpan data ke DB
+- [x] **Share Survey & Graphic QR Card Exporter (`components/survey/ShareSurveyModal.vue`):**
+  - Modal penyebaran link survei dengan tombol **Salin Link** & notifikasi toast
+  - Generator kode QR live pada canvas & pratinjau kartu di layar
+  - Penjerat gambar Canvas (1000x1300px) yang menghasilkan foto kartu estetik lengkap dengan branding Formly, judul survei terformat, deskripsi, kode QR resolusi tinggi, URL publik, dan petunjuk pemindaian untuk diunduh sebagai `.png`
 
 #### 🧪 Backend Testing Strategy
 - **Preview Isolation Test (`tests/unit/preview-bypass.spec.ts`):**
@@ -254,6 +262,8 @@ formly-app/
 #### 🎨 UI Testing Strategy
 - **Preview Component Test (`tests/component/preview-banner.spec.ts`):**
   - Test banner peringatan muncul saat URL mengandung parameter `preview=true` dan tersembunyi jika parameter tidak ada.
+- **Share Modal & QR Export Test (`tests/component/share-qr.spec.ts`):**
+  - Test pengopian URL ke clipboard dan pembuatan gambar PNG kartu QR tanpa crash.
 - **Preview E2E Simulation (`tests/e2e/preview-mode.spec.ts`):**
   - Admin mengeklik tombol preview -> Tab baru terbuka dengan banner floating -> Admin mengisi form sampai akhir -> Modal sukses simulasi muncul tanpa ada record baru di database.
 

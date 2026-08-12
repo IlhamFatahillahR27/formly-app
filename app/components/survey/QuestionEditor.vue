@@ -118,6 +118,47 @@
         </div>
       </div>
 
+      <!-- Rating Configuration & Live Star Preview -->
+      <div v-if="question.type === 'rating'" class="p-3 bg-amber-50/50 dark:bg-amber-950/20 border border-amber-200/60 dark:border-amber-900/40 rounded-lg space-y-3">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-semibold text-gray-800 dark:text-gray-200 flex items-center">
+            <UIcon name="i-heroicons-star-solid" class="w-4 h-4 mr-1.5 text-amber-500" />
+            Pengaturan Skala Rating
+          </span>
+          <div class="flex items-center space-x-2">
+            <label class="text-2xs text-gray-600 dark:text-gray-400 font-medium">Batas Maksimal Bintang (1-10):</label>
+            <select
+              :value="maxRating"
+              class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded px-2 py-1 text-xs font-bold text-amber-600 dark:text-amber-400 focus:outline-none cursor-pointer"
+              @change="onMaxRatingChange"
+            >
+              <option v-for="n in 10" :key="n" :value="n">{{ n }} Bintang</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Live Rating Stars Preview -->
+        <div class="pt-1">
+          <span class="text-2xs font-medium text-gray-500 block mb-1">Pratinjau Rating:</span>
+          <div class="flex flex-wrap items-center gap-1.5">
+            <button
+              v-for="star in maxRating"
+              :key="star"
+              type="button"
+              class="p-1 text-amber-400 hover:scale-110 transition-transform"
+              title="Pratinjau Bintang"
+            >
+              <svg class="w-6 h-6 fill-current text-amber-400 drop-shadow-sm" viewBox="0 0 24 24">
+                <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/>
+              </svg>
+            </button>
+            <span class="text-2xs font-semibold text-gray-500 dark:text-gray-400 ml-2">
+              (Skala 1 - {{ maxRating }})
+            </span>
+          </div>
+        </div>
+      </div>
+
       <!-- Logic Branching Rule List & Creator -->
       <div class="border-t border-gray-100 dark:border-gray-800 pt-3">
         <div class="flex items-center justify-between mb-2">
@@ -279,6 +320,29 @@ watch(
   },
   { immediate: true }
 )
+
+const maxRating = computed<number>(() => {
+  if (!props.question.options || typeof props.question.options !== 'object' || Array.isArray(props.question.options)) {
+    return 5
+  }
+  const val = Number((props.question.options as any).max_rating || (props.question.options as any).maxRating || 5)
+  return Math.min(Math.max(isNaN(val) ? 5 : val, 1), 10)
+})
+
+async function onMaxRatingChange(e: Event) {
+  const target = e.target as HTMLSelectElement
+  const newMax = Math.min(Math.max(Number(target.value) || 5, 1), 10)
+  
+  let currentOpts: Record<string, any> = {}
+  if (props.question.options && typeof props.question.options === 'object' && !Array.isArray(props.question.options)) {
+    currentOpts = { ...(props.question.options as any) }
+  }
+  currentOpts.max_rating = newMax
+
+  await updateQuestion(props.question.id, {
+    options: currentOpts as any,
+  })
+}
 
 const questionTypeOptions = [
   { value: 'short_text', label: 'Isian Singkat (Short Text)' },

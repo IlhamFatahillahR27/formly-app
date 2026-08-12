@@ -47,9 +47,7 @@
           :class="[
             isOptionSelected(option)
               ? 'border-primary-500 bg-primary-50/50 dark:bg-primary-950/20 ring-1 ring-primary-500'
-              : option.isCompleted
-                ? 'border-gray-200 dark:border-gray-800 bg-gray-100 dark:bg-gray-800/50 opacity-60'
-                : 'border-gray-200 dark:border-gray-800 hover:border-gray-300 dark:hover:border-gray-700 bg-white dark:bg-gray-900'
+              : 'border-gray-200 dark:border-gray-800 hover:border-gray-300 dark:hover:border-gray-700 bg-white dark:bg-gray-900'
           ]"
           @click="selectOption(option)"
         >
@@ -57,51 +55,55 @@
             type="radio"
             :name="`q_${question.id}`"
             :checked="isOptionSelected(option)"
-            :disabled="option.isCompleted && !isOptionSelected(option)"
             class="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 cursor-pointer pointer-events-none"
           />
           <span class="ml-3 text-sm font-medium text-gray-800 dark:text-gray-200">
             {{ option.text }}
           </span>
-          <UBadge
-            v-if="option.isCompleted && !isOptionSelected(option)"
-            color="neutral"
-            variant="soft"
-            size="xs"
-            class="ml-auto"
-          >
-            Selesai
-          </UBadge>
         </div>
 
         <p v-if="availableOptions.length === 0" class="text-xs text-gray-500 italic py-1">
-          Tidak ada opsi jawaban tersedia.
+          Seluruh pilihan opsi/kategori telah diselesaikan.
         </p>
       </div>
 
-      <!-- 4. Rating -->
-      <div v-else-if="question.type === 'rating'" class="flex flex-wrap items-center gap-2 pt-1">
-        <button
-          v-for="star in 5"
-          :key="star"
-          type="button"
-          class="flex items-center justify-center w-10 h-10 sm:w-11 sm:h-11 rounded-lg border font-semibold text-sm transition-all focus:outline-none"
-          :class="[
-            Number(modelValue) === star
-              ? 'bg-amber-500 text-white border-amber-500 shadow-sm scale-105'
-              : 'border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-300 hover:border-amber-400 hover:text-amber-500'
-          ]"
-          @click="onUpdateValue(star)"
+      <!-- 4. Rating (Google Reviews Style) -->
+      <div v-else-if="question.type === 'rating'" class="space-y-2 pt-1">
+        <div
+          class="flex flex-wrap items-center gap-1 sm:gap-1.5 select-none"
+          @mouseleave="hoverRating = null"
         >
-          <span class="flex items-center space-x-1">
-            <span>{{ star }}</span>
-            <UIcon
-              name="i-heroicons-star-solid"
-              class="w-3.5 h-3.5"
-              :class="Number(modelValue) === star ? 'text-white' : 'text-amber-400'"
-            />
-          </span>
-        </button>
+          <button
+            v-for="star in maxStars"
+            :key="star"
+            type="button"
+            class="p-1 sm:p-1.5 focus:outline-none transition-transform duration-150 transform hover:scale-125 active:scale-95 cursor-pointer"
+            @mouseenter="hoverRating = star"
+            @click="onUpdateValue(star)"
+          >
+            <svg
+              class="w-8 h-8 sm:w-9 sm:h-9 transition-colors duration-150 drop-shadow-xs"
+              :class="[
+                star <= (hoverRating ?? Number(modelValue) ?? 0)
+                  ? 'text-amber-400 fill-amber-400'
+                  : 'text-gray-300 dark:text-gray-700 fill-gray-200 dark:fill-gray-800'
+              ]"
+              viewBox="0 0 24 24"
+            >
+              <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/>
+            </svg>
+          </button>
+
+          <!-- Selected Rating Indicator / Score Badge -->
+          <div class="ml-2 flex items-center space-x-1">
+            <span v-if="modelValue" class="text-sm font-bold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/50 px-2.5 py-1 rounded-full border border-amber-200 dark:border-amber-900/50">
+              {{ modelValue }} / {{ maxStars }} Bintang
+            </span>
+            <span v-else class="text-xs text-gray-400 italic">
+              Pilih 1 hingga {{ maxStars }} bintang
+            </span>
+          </div>
+        </div>
       </div>
 
       <!-- 5. Default Fallback -->
@@ -126,6 +128,7 @@
 </template>
 
 <script setup lang="ts">
+import { ref, computed } from 'vue'
 import type { Database } from '~/types/supabase'
 
 type Question = Database['public']['Tables']['questions']['Row']
@@ -147,7 +150,18 @@ const emit = defineEmits<{
   (e: 'update:modelValue', value: any): void
 }>()
 
-// Robustly process multiple choice options & state elimination
+const hoverRating = ref<number | null>(null)
+
+// Calculate max rating stars dynamically bounded between 1 and 10
+const maxStars = computed<number>(() => {
+  if (props.question.type !== 'rating') return 5
+  const opts = props.question.options
+  if (!opts || typeof opts !== 'object' || Array.isArray(opts)) return 5
+  const num = Number((opts as any).max_rating || (opts as any).maxRating || 5)
+  return Math.min(Math.max(isNaN(num) ? 5 : num, 1), 10)
+})
+
+// Process multiple choice options & hide completed categories in looped section
 const availableOptions = computed<ChoiceOption[]>(() => {
   if (props.question.type !== 'multiple_choice') return []
 
@@ -168,7 +182,7 @@ const availableOptions = computed<ChoiceOption[]>(() => {
 
   const completed = props.completedCategories || []
 
-  return rawOpts.map((opt: any, idx: number) => {
+  const mapped = rawOpts.map((opt: any, idx: number) => {
     let id = `opt_${idx + 1}`
     let text = ''
 
@@ -180,7 +194,14 @@ const availableOptions = computed<ChoiceOption[]>(() => {
       text = String(opt)
     }
 
-    const isCompleted = completed.includes(id) || completed.includes(text)
+    const uniqueKey = `${props.question.id}_${id}`
+    const isGenericTrigger = ['ya', 'tidak', 'yes', 'no'].includes(text.trim().toLowerCase())
+
+    // Option is completed ONLY if it's not a generic loop trigger (like Ya/Tidak) AND matches completedCategories
+    const isCompleted = !isGenericTrigger && (
+      completed.includes(uniqueKey) ||
+      completed.includes(text)
+    )
 
     return {
       id,
@@ -188,6 +209,9 @@ const availableOptions = computed<ChoiceOption[]>(() => {
       isCompleted,
     }
   })
+
+  // Hide completed category options unless currently selected for this question
+  return mapped.filter((opt) => !opt.isCompleted || isOptionSelected(opt))
 })
 
 function isOptionSelected(option: ChoiceOption): boolean {
@@ -199,7 +223,6 @@ function isOptionSelected(option: ChoiceOption): boolean {
 }
 
 function selectOption(option: ChoiceOption) {
-  if (option.isCompleted && !isOptionSelected(option)) return
   emit('update:modelValue', { id: option.id, text: option.text })
 }
 

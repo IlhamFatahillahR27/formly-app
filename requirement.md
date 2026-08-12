@@ -87,12 +87,13 @@ CREATE TABLE public.responses (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
--- 6. Tabel Answers
+-- 6. Tabel Answers (Ditambahkan iteration_index untuk multi-iterasi section loop)
 CREATE TABLE public.answers (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     response_id UUID NOT NULL REFERENCES public.responses(id) ON DELETE CASCADE,
     question_id UUID NOT NULL REFERENCES public.questions(id) ON DELETE CASCADE,
     answer_value JSONB NOT NULL,
+    iteration_index INT NOT NULL DEFAULT 1, -- Nomor iterasi pengisian section (1, 2, dst)
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
@@ -207,18 +208,17 @@ Setiap tabel WAJIB mengaktifkan RLS (`ALTER TABLE ... ENABLE ROW LEVEL SECURITY;
 
 
 
-### 3.3 Module 3: Interactive Sandbox Preview
+### 3.3 Module 3: Interactive Sandbox Preview & Share QR Card Exporter
 
 * **REQ-PREVIEW-MODE (New Tab Preview Flag):**
 * Di halaman editor terdapat tombol **Preview** yang membuka tab baru ke URL `/survey/[id]?preview=true`.
+* **Floating Preview Banner:** Tampilan publik mendeteksi `route.query.preview === 'true'` dan menampilkan banner peringatan: *"⚠️ Mode Preview: Jawaban tidak akan disimpan."*.
+* **Bypass Database Insert:** Saat pengguna menekan tombol Submit di Mode Preview, transaksi `INSERT` ke Supabase **di-bypass** (tidak disimpan) dan langsung menampilkan alert simulasi sukses.
 
-
-* 
-**Floating Preview Banner:** Tampilan publik mendeteksi `route.query.preview === 'true'` dan menampilkan banner peringatan: *"⚠️ Mode Preview: Jawaban tidak akan disimpan."*.
-
-
-* 
-**Bypass Database Insert:** Saat pengguna menekan tombol Submit di Mode Preview, transaksi `INSERT` ke Supabase **di-bypass** (tidak disimpan) dan langsung menampilkan alert simulasi sukses.
+* **REQ-SHARE-SURVEY & QR-CARD (Share Modal & Graphic QR Card Exporter):**
+* Admin dapat mengeklik tombol **Bagikan / QR** di Dashboard dan Builder untuk membuka `ShareSurveyModal.vue`.
+* **Copy Link Button:** Tombol **Salin Link** menyalin URL publik survei ke clipboard lengkap dengan indikator sukses dan toast notification.
+* **Graphic QR Card Exporter:** Mengunduh poster foto berformat `.png` resolusi tinggi (1000x1300px) menggunakan Canvas API. Poster ini memuat desain kartu modern dengan branding Formly, judul survei yang terformat rapi, deskripsi, kode QR resolusi tinggi, URL publik, dan petunjuk pemindaian yang estetik untuk dicetak atau disebarkan.
 
 
 
@@ -226,24 +226,15 @@ Setiap tabel WAJIB mengaktifkan RLS (`ALTER TABLE ... ENABLE ROW LEVEL SECURITY;
 
 ### 3.4 Module 4: Guest Survey Execution & Dynamic Logic
 
-* **REQ-GUEST-FLOW (Dynamic Navigation & Back Tracking):**
+* **REQ-GUEST-FLOW (Dynamic Navigation & Google Reviews Rating):**
 * Halaman `/survey/[id]` dibuka publik oleh *Guest* tanpa login.
-
-
 * Navigasi berdasarkan evaluasi `section_logic`: Jika opsi A dipilih, arahkan ke `target_section_id`. Jika tidak ada logic, gunakan `default_next_section_id`.
+* **Rating Google Reviews UI & Max Rating Customization:** Tampilan rating menggunakan bintang interaktif gaya Google Reviews (`#fbbc04` warna kuning Google, efek hover highlight bintang 1-N, animasi micro-interaction scale, dan indikator skor). Jumlah bintang mengikuti konfigurasi `max_rating` (1 hingga 10 bintang).
+* **Unlocked Option Selection & State Elimination (Kasus Kembali ke Section Kategori):** Opsi pada pertanyaan tetap terbuka dan dapat diklik. Frontend menyimpan array `completedCategories` di `useState`. Jika user kembali ke Section Kategori dalam flow looping, opsi kategori yang sudah selesai otomatis disembunyikan dari pilihan sehingga pengguna memilih kategori baru.
 
-
-* 
-**State Elimination (Kasus Kembali ke Section Kategori):** Frontend menyimpan array `completedCategories` di `useState`. Jika user kembali ke Section Kategori, opsi kategori yang sudah pernah diselesaikan otomatis dielektrik/dihilangkan dari pilihan.
-
-
-
-
-* **REQ-GUEST-SUBMIT (Atomic Submission):**
+* **REQ-GUEST-SUBMIT (Atomic & Multi-Iteration Submission):**
 * Validasi *front-end* untuk pertanyaan `is_required = true`.
-
-
-* Saat tombol Submit Final di tekan, simpan data ke `public.responses` dan `public.answers` secara berurutan (*Atomic Transaction*).
+* Menyimpan riwayat pengisian dari seluruh iterasi section (`accumulatedRecords`). Saat tombol Submit Final ditekan, simpan data ke `public.responses` dan `public.answers` lengkap dengan kolom `iteration_index` per putaran section secara berurutan (*Atomic Multi-Iteration Transaction*).
 
 
 

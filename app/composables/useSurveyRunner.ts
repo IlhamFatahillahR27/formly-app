@@ -11,6 +11,14 @@ export interface RunnerQuestionOption {
   text: string
 }
 
+export interface SectionAnswerRecord {
+  stepIndex: number
+  sectionId: string
+  iterationIndex: number
+  questionId: string
+  value: any
+}
+
 export function useSurveyRunner() {
   const supabase = useSupabaseClient<Database>()
 
@@ -21,6 +29,7 @@ export function useSurveyRunner() {
 
   const currentSectionId = useState<string | null>('runner_current_section_id', () => null)
   const answers = useState<Record<string, any>>('runner_answers', () => ({}))
+  const accumulatedRecords = useState<SectionAnswerRecord[]>('runner_accumulated_records', () => [])
   const navigationHistory = useState<string[]>('runner_nav_history', () => [])
   const completedCategories = useState<string[]>('runner_completed_categories', () => [])
 
@@ -156,6 +165,7 @@ export function useSurveyRunner() {
       navigationHistory.value = []
       completedCategories.value = []
       answers.value = {}
+      accumulatedRecords.value = []
       validationErrors.value = {}
       isSubmitted.value = false
     } catch (err: any) {
@@ -309,6 +319,31 @@ export function useSurveyRunner() {
     return isValid
   }
 
+  // Helper to snapshot active section's answers into accumulatedRecords
+  function snapshotCurrentSectionAnswers() {
+    if (!currentSectionId.value) return
+
+    const curSecId = currentSectionId.value
+    const stepIdx = navigationHistory.value.length + 1
+    const iterationIdx = navigationHistory.value.filter((id) => id === curSecId).length + 1
+
+    // Remove any previously recorded answers for the exact same stepIndex
+    accumulatedRecords.value = accumulatedRecords.value.filter((r) => r.stepIndex !== stepIdx)
+
+    for (const q of currentQuestions.value) {
+      const val = answers.value[q.id]
+      if (val !== undefined && val !== null && val !== '') {
+        accumulatedRecords.value.push({
+          stepIndex: stepIdx,
+          sectionId: curSecId,
+          iterationIndex: iterationIdx,
+          questionId: q.id,
+          value: JSON.parse(JSON.stringify(val)),
+        })
+      }
+    }
+  }
+
   // Move to next section
   function goToNextSection(): boolean {
     if (!currentSectionId.value) return false
@@ -317,14 +352,26 @@ export function useSurveyRunner() {
       return false
     }
 
-    // Collect choices for state elimination
+    // 1. Snapshot current section answers
+    snapshotCurrentSectionAnswers()
+
+    // 2. Collect choices for state elimination (category tracking)
     for (const q of currentQuestions.value) {
       if (q.type === 'multiple_choice') {
         const val = answers.value[q.id]
         if (val) {
           const optId = typeof val === 'object' ? val.id : String(val)
-          if (optId && !completedCategories.value.includes(optId)) {
-            completedCategories.value.push(optId)
+          const optText = typeof val === 'object' ? val.text : String(val)
+          const isGenericTrigger = ['ya', 'tidak', 'yes', 'no'].includes(String(optText).trim().toLowerCase())
+
+          if (!isGenericTrigger) {
+            const uniqueKey = `${q.id}_${optId}`
+            if (!completedCategories.value.includes(uniqueKey)) {
+              completedCategories.value.push(uniqueKey)
+            }
+            if (optText && !completedCategories.value.includes(optText)) {
+              completedCategories.value.push(optText)
+            }
           }
         }
       }
@@ -334,6 +381,15 @@ export function useSurveyRunner() {
 
     navigationHistory.value.push(currentSectionId.value)
     currentSectionId.value = nextId
+
+    // 3. Prepare answers for next section (clear old loop values if starting fresh iteration)
+    if (nextId) {
+      const nextQuestions = allQuestions.value.filter((q) => q.section_id === nextId)
+      for (const q of nextQuestions) {
+        // Clear active selection if looping back so user gets fresh inputs for new iteration
+        delete answers.value[q.id]
+      }
+    }
 
     return true
   }
@@ -346,6 +402,14 @@ export function useSurveyRunner() {
     if (prevId) {
       currentSectionId.value = prevId
       validationErrors.value = {}
+
+      // Restore active section answers from accumulatedRecords for the previous step
+      const stepIdx = navigationHistory.value.length + 1
+      const stepRecords = accumulatedRecords.value.filter((r) => r.stepIndex === stepIdx)
+      for (const rec of stepRecords) {
+        answers.value[rec.questionId] = rec.value
+      }
+
       return true
     }
     return false
@@ -358,6 +422,9 @@ export function useSurveyRunner() {
     if (!validateCurrentSection()) {
       return false
     }
+
+    // Snapshot final section answers before submitting
+    snapshotCurrentSectionAnswers()
 
     isSubmitting.value = true
     errorMessage.value = null
@@ -386,13 +453,14 @@ export function useSurveyRunner() {
 
       const responseId = respData.id
 
-      // 2. Prepare and insert answers into public.answers
-      const answerRows = Object.entries(answers.value)
-        .filter(([_, val]) => val !== undefined && val !== null && val !== '')
-        .map(([qId, val]) => ({
+      // 2. Prepare and insert accumulated multi-iteration answers into public.answers
+      const answerRows = accumulatedRecords.value
+        .filter((rec) => rec.value !== undefined && rec.value !== null && rec.value !== '')
+        .map((rec) => ({
           response_id: responseId,
-          question_id: qId,
-          answer_value: val,
+          question_id: rec.questionId,
+          answer_value: rec.value,
+          iteration_index: rec.iterationIndex,
         }))
 
       if (answerRows.length > 0) {
@@ -421,6 +489,7 @@ export function useSurveyRunner() {
     currentSection,
     currentQuestions,
     answers,
+    accumulatedRecords,
     navigationHistory,
     completedCategories,
     isLoading,

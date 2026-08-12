@@ -51,6 +51,17 @@
           Simpan
         </UButton>
 
+        <!-- Share & QR Button -->
+        <UButton
+          color="info"
+          variant="soft"
+          icon="i-heroicons-share"
+          size="sm"
+          @click="isShareModalOpen = true"
+        >
+          Bagikan &amp; QR
+        </UButton>
+
         <!-- Preview Button -->
         <UButton
           color="emerald"
@@ -121,6 +132,12 @@
         <CanvasFlowDesigner v-else-if="activeTabKey === 'canvas'" />
       </div>
     </div>
+
+    <!-- Share & QR Modal -->
+    <ShareSurveyModal
+      v-model:open="isShareModalOpen"
+      :survey="survey"
+    />
   </div>
 </template>
 
@@ -128,6 +145,7 @@
 import { useSurveyBuilder } from '~/composables/useSurveyBuilder'
 import FormLinearEditor from '~/components/builder/FormLinearEditor.vue'
 import CanvasFlowDesigner from '~/components/builder/CanvasFlowDesigner.vue'
+import ShareSurveyModal from '~/components/survey/ShareSurveyModal.vue'
 
 definePageMeta({
   middleware: 'auth',
@@ -140,6 +158,7 @@ const { survey, loading, saving, error, loadSurveyData } = useSurveyBuilder()
 
 const activeTabKey = ref<'linear' | 'canvas'>('linear')
 const saveSuccessMessage = ref('')
+const isShareModalOpen = ref(false)
 
 onMounted(async () => {
   if (surveyId.value) {

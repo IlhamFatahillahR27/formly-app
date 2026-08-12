@@ -179,6 +179,15 @@
             </UButton>
           </NuxtLink>
 
+          <UButton
+            color="info"
+            variant="ghost"
+            size="xs"
+            icon="i-heroicons-share"
+            title="Bagikan Survei & QR Code"
+            @click="openShareModal(survey)"
+          />
+
           <NuxtLink :to="`/admin/survey/${survey.id}/analytics`">
             <UButton color="neutral" variant="ghost" size="xs" icon="i-heroicons-chart-bar" title="Analisis" />
           </NuxtLink>
@@ -198,6 +207,12 @@
         </div>
       </UCard>
     </div>
+
+    <!-- Share & QR Modal -->
+    <ShareSurveyModal
+      v-model:open="isShareModalOpen"
+      :survey="shareSurveyTarget"
+    />
 
     <!-- Delete Confirmation Modal -->
     <UModal v-model:open="isDeleteModalOpen" title="Hapus Survei">
@@ -233,6 +248,7 @@
 
 <script setup lang="ts">
 import type { SurveyWithStats } from '~/composables/useSurveys'
+import ShareSurveyModal from '~/components/survey/ShareSurveyModal.vue'
 
 definePageMeta({
   middleware: 'auth',
@@ -248,6 +264,14 @@ const errorMessage = ref('')
 
 const searchQuery = ref('')
 const statusFilter = ref<'all' | 'active' | 'inactive'>('all')
+
+const isShareModalOpen = ref(false)
+const shareSurveyTarget = ref<SurveyWithStats | null>(null)
+
+function openShareModal(survey: SurveyWithStats) {
+  shareSurveyTarget.value = survey
+  isShareModalOpen.value = true
+}
 
 const isDeleteModalOpen = ref(false)
 const surveyToDelete = ref<SurveyWithStats | null>(null)

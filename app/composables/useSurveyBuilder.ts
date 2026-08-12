@@ -1,12 +1,11 @@
-import type { Database, Json } from '~/types/supabase'
+import type { Database, Json, SurveyRow, SectionRow, QuestionRow, SectionLogicRow } from '~/types/supabase'
 
-export type BuilderSurveyRow = Database['public']['Tables']['surveys']['Row']
-export type SectionRow = Database['public']['Tables']['sections']['Row']
-export type QuestionRow = Database['public']['Tables']['questions']['Row']
-export type SectionLogicRow = Database['public']['Tables']['section_logic']['Row']
+export type BuilderSurveyRow = SurveyRow
+export type { SectionRow, QuestionRow, SectionLogicRow }
 
 export type QuestionType = 'short_text' | 'long_text' | 'multiple_choice' | 'rating'
 export type LogicOperator = 'selected' | 'filled' | 'equals' | 'not_equals' | 'greater_than' | 'less_than'
+
 
 export interface QuestionOption {
   id: string
@@ -115,9 +114,10 @@ export function useSurveyBuilder() {
    */
   function updateNodePosition(sectionId: string, position_x: number, position_y: number) {
     const secIndex = sections.value.findIndex((s) => s.id === sectionId)
-    if (secIndex !== -1) {
+    const currentSec = sections.value[secIndex]
+    if (secIndex !== -1 && currentSec) {
       sections.value[secIndex] = {
-        ...sections.value[secIndex],
+        ...currentSec,
         position_x,
         position_y,
       }
@@ -154,8 +154,8 @@ export function useSurveyBuilder() {
 
     if (typeof titleOrPayload === 'string' && titleOrPayload.trim()) {
       defaultTitle = titleOrPayload.trim()
-    } else if (typeof titleOrPayload === 'object' && titleOrPayload !== null && 'title' in titleOrPayload && (titleOrPayload as any).title) {
-      defaultTitle = String((titleOrPayload as any).title).trim()
+    } else if (typeof titleOrPayload === 'object' && titleOrPayload !== null && 'title' in titleOrPayload && typeof titleOrPayload.title === 'string' && titleOrPayload.title.trim()) {
+      defaultTitle = titleOrPayload.title.trim()
     }
 
     try {
@@ -424,7 +424,7 @@ export function useSurveyBuilder() {
    * Create Logic Branching Rule
    */
   async function createLogicRule(
-    payload: Omit<SectionLogicRow, 'id' | 'created_at' | 'updated_at' | 'survey_id'>
+    payload: Omit<SectionLogicRow, 'id' | 'created_at' | 'updated_at' | 'survey_id' | 'condition_value'> & { condition_value?: Json | null }
   ): Promise<SectionLogicRow | null> {
     if (!survey.value) return null
     saving.value = true
@@ -437,7 +437,7 @@ export function useSurveyBuilder() {
           source_section_id: payload.source_section_id,
           question_id: payload.question_id,
           operator: payload.operator,
-          condition_value: payload.condition_value,
+          condition_value: payload.condition_value ?? null,
           target_section_id: payload.target_section_id,
         })
         .select()

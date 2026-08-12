@@ -18,7 +18,7 @@
 
       <div class="flex items-center space-x-2">
         <UButton
-          size="2xs"
+          size="sm"
           color="secondary"
           variant="ghost"
           :icon="allCollapsed ? 'i-heroicons-arrows-pointing-out' : 'i-heroicons-arrows-pointing-in'"
@@ -54,10 +54,10 @@
               <h3 class="font-bold text-gray-900 dark:text-white text-base">
                 {{ sec.title }}
               </h3>
-              <UBadge v-if="survey?.start_section_id === sec.id" color="emerald" variant="soft" size="xs">
+              <UBadge v-if="survey?.start_section_id === sec.id" color="success" variant="soft" size="sm">
                 Start Section
               </UBadge>
-              <UBadge v-if="sec.is_end_section" color="amber" variant="soft" size="xs">
+              <UBadge v-if="sec.is_end_section" color="warning" variant="soft" size="sm">
                 End Section
               </UBadge>
             </div>
@@ -72,7 +72,7 @@
           <UButton
             v-if="survey?.start_section_id !== sec.id"
             size="xs"
-            color="emerald"
+            color="success"
             variant="ghost"
             icon="i-heroicons-flag"
             @click="setStartSection(sec.id)"
@@ -83,7 +83,7 @@
           <!-- End Section Toggle Button -->
           <UButton
             size="xs"
-            :color="sec.is_end_section ? 'amber' : 'gray'"
+            :color="sec.is_end_section ? 'warning' : 'neutral'"
             variant="ghost"
             :icon="sec.is_end_section ? 'i-heroicons-check-circle' : 'i-heroicons-stop'"
             @click="toggleEndSection(sec)"
@@ -114,7 +114,7 @@
               :model-value="sec.title"
               size="xs"
               class="w-full"
-              @change="(e: Event) => onSaveSectionTitle(sec.id, (e.target as HTMLInputElement).value)"
+              @change="(e: Event) => onSaveSectionTitle(sec.id, (e.target as HTMLInputElement)?.value || '')"
             />
           </div>
 
@@ -127,7 +127,7 @@
               placeholder="Deskripsi opsional..."
               size="xs"
               class="w-full"
-              @change="(e: Event) => onSaveSectionDescription(sec.id, (e.target as HTMLInputElement).value)"
+              @change="(e: Event) => onSaveSectionDescription(sec.id, (e.target as HTMLInputElement)?.value || '')"
             />
           </div>
 
@@ -138,7 +138,7 @@
             <select
               :value="sec.default_next_section_id || ''"
               class="w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg px-2.5 py-1.5 text-xs text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:outline-none transition-colors cursor-pointer"
-              @change="(e: Event) => onSaveFallbackSection(sec.id, (e.target as HTMLSelectElement).value)"
+              @change="(e: Event) => onSaveFallbackSection(sec.id, (e.target as HTMLSelectElement)?.value || '')"
             >
               <option
                 v-for="opt in getFallbackOptions(sec.id)"

@@ -75,7 +75,7 @@ async function handleLogout() {
       }
       await router.push('/admin/login')
     }
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('Logout error:', err)
   } finally {
     isLoggingOut.value = false

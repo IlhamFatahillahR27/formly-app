@@ -10,6 +10,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { Doughnut } from 'vue-chartjs'
+import type { TooltipItem } from 'chart.js'
 import {
   Chart as ChartJS,
   Title,
@@ -73,10 +74,11 @@ const chartOptions = computed(() => ({
     },
     tooltip: {
       callbacks: {
-        label: (context: any) => {
+        label: (context: TooltipItem<'doughnut'>) => {
           const label = context.label || ''
-          const value = context.parsed || 0
-          const total = context.dataset.data.reduce((a: number, b: number) => a + b, 0)
+          const value = typeof context.parsed === 'number' ? context.parsed : 0
+          const rawData = (context.dataset.data || []) as number[]
+          const total = rawData.reduce((a: number, b: number) => a + b, 0)
           const percentage = total > 0 ? Math.round((value / total) * 100) : 0
           return `${label}: ${value} (${percentage}%)`
         },

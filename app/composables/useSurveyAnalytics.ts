@@ -1,11 +1,8 @@
 import Papa from 'papaparse'
-import type { Database } from '~/types/supabase'
+import type { Database, SurveyRow, SectionRow, QuestionRow, ResponseRow, AnswerRow } from '~/types/supabase'
 
-export type SurveyRow = Database['public']['Tables']['surveys']['Row']
-export type SectionRow = Database['public']['Tables']['sections']['Row']
-export type QuestionRow = Database['public']['Tables']['questions']['Row']
-export type ResponseRow = Database['public']['Tables']['responses']['Row']
-export type AnswerRow = Database['public']['Tables']['answers']['Row']
+export type { SurveyRow, SectionRow, QuestionRow, ResponseRow, AnswerRow }
+
 
 export interface ChoiceStat {
   label: string
@@ -202,7 +199,7 @@ export function useSurveyAnalytics() {
 
     if (responses.length > 0) {
       const sorted = [...responses].sort((a, b) => new Date(b.submitted_at).getTime() - new Date(a.submitted_at).getTime())
-      latestSubmission = sorted[0].submitted_at
+      latestSubmission = sorted[0]?.submitted_at || null
     }
 
     // Map answers by question_id
@@ -211,7 +208,7 @@ export function useSurveyAnalytics() {
       if (!answersByQuestionId[ans.question_id]) {
         answersByQuestionId[ans.question_id] = []
       }
-      answersByQuestionId[ans.question_id].push(ans)
+      answersByQuestionId[ans.question_id]?.push(ans)
     }
 
     // Response timestamp map for text feeds
@@ -533,7 +530,7 @@ export function useSurveyAnalytics() {
         if (!answersByResponse[ans.response_id]) {
           answersByResponse[ans.response_id] = []
         }
-        answersByResponse[ans.response_id].push(ans)
+        answersByResponse[ans.response_id]?.push(ans)
       }
 
       const detailedRows: DetailedResponseRow[] = responseList.map(resp => {
@@ -546,7 +543,7 @@ export function useSurveyAnalytics() {
           }
           const cleanText = extractOptionText(ans.answer_value)
           if (cleanText) {
-            answersMap[ans.question_id].push(cleanText)
+            answersMap[ans.question_id]?.push(cleanText)
           }
         }
 
@@ -603,6 +600,7 @@ export function useSurveyAnalytics() {
 
       for (let qIdx = 0; qIdx < questions.length; qIdx++) {
         const q = questions[qIdx]
+        if (!q) continue
         const secInfo = sectionMap[q.section_id]
         const secPrefix = secInfo ? `[Section ${secInfo.index}: ${secInfo.title}] ` : ''
         const qHeader = `${secPrefix}P${qIdx + 1}: ${q.question_text}`

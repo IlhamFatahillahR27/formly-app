@@ -16,7 +16,7 @@
       <!-- 1. Short Text -->
       <div v-if="question.type === 'short_text'">
         <UInput
-          :model-value="modelValue"
+          :model-value="textModelValue"
           placeholder="Tuliskan jawaban Anda..."
           size="md"
           class="w-full"
@@ -28,7 +28,7 @@
       <!-- 2. Long Text -->
       <div v-else-if="question.type === 'long_text'">
         <UTextarea
-          :model-value="modelValue"
+          :model-value="textModelValue"
           placeholder="Tuliskan jawaban lengkap Anda..."
           :rows="4"
           size="md"
@@ -109,7 +109,7 @@
       <!-- 5. Default Fallback -->
       <div v-else>
         <UInput
-          :model-value="modelValue"
+          :model-value="textModelValue"
           placeholder="Tuliskan jawaban Anda..."
           size="md"
           class="w-full"
@@ -154,16 +154,23 @@ export interface ChoiceOption {
 
 const props = defineProps<{
   question: Question
-  modelValue: any
+  modelValue: unknown
   errorMessage?: string | null
   completedCategories?: string[]
 }>()
 
 const emit = defineEmits<{
-  (e: 'update:modelValue', value: any): void
+  (e: 'update:modelValue', value: unknown): void
 }>()
 
 const hoverRating = ref<number | null>(null)
+
+const textModelValue = computed<string | number | undefined>(() => {
+  if (typeof props.modelValue === 'string' || typeof props.modelValue === 'number') {
+    return props.modelValue
+  }
+  return props.modelValue ? String(props.modelValue) : undefined
+})
 
 const hasAnswer = computed(() => {
   if (props.modelValue === null || props.modelValue === undefined || props.modelValue === '') return false
@@ -176,7 +183,8 @@ const maxStars = computed<number>(() => {
   if (props.question.type !== 'rating') return 5
   const opts = props.question.options
   if (!opts || typeof opts !== 'object' || Array.isArray(opts)) return 5
-  const num = Number((opts as any).max_rating || (opts as any).maxRating || 5)
+  const record = opts as Record<string, unknown>
+  const num = Number(record.max_rating || record.maxRating || 5)
   return Math.min(Math.max(isNaN(num) ? 5 : num, 1), 10)
 })
 
@@ -184,7 +192,7 @@ const maxStars = computed<number>(() => {
 const availableOptions = computed<ChoiceOption[]>(() => {
   if (props.question.type !== 'multiple_choice') return []
 
-  let rawOpts: any[] = []
+  let rawOpts: unknown[] = []
   if (Array.isArray(props.question.options)) {
     rawOpts = props.question.options
   } else if (typeof props.question.options === 'string') {
@@ -201,13 +209,14 @@ const availableOptions = computed<ChoiceOption[]>(() => {
 
   const completed = props.completedCategories || []
 
-  const mapped = rawOpts.map((opt: any, idx: number) => {
+  const mapped = rawOpts.map((opt: unknown, idx: number) => {
     let id = `opt_${idx + 1}`
     let text = ''
 
     if (typeof opt === 'object' && opt !== null) {
-      id = opt.id || opt.value || `opt_${idx + 1}`
-      text = opt.text || opt.label || opt.title || String(opt.id || idx + 1)
+      const obj = opt as Record<string, unknown>
+      id = String(obj.id || obj.value || `opt_${idx + 1}`)
+      text = String(obj.text || obj.label || obj.title || obj.id || idx + 1)
     } else {
       id = String(opt)
       text = String(opt)
@@ -235,8 +244,9 @@ const availableOptions = computed<ChoiceOption[]>(() => {
 
 function isOptionSelected(option: ChoiceOption): boolean {
   if (props.modelValue === undefined || props.modelValue === null) return false
-  if (typeof props.modelValue === 'object') {
-    return props.modelValue.id === option.id || props.modelValue.text === option.text
+  if (typeof props.modelValue === 'object' && props.modelValue !== null) {
+    const obj = props.modelValue as Record<string, unknown>
+    return obj.id === option.id || obj.text === option.text
   }
   return String(props.modelValue) === option.id || String(props.modelValue) === option.text
 }
@@ -263,7 +273,7 @@ function clearAnswer() {
   emit('update:modelValue', null)
 }
 
-function onUpdateValue(val: any) {
+function onUpdateValue(val: unknown) {
   emit('update:modelValue', val)
 }
 </script>

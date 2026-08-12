@@ -33,7 +33,7 @@
         </p>
       </div>
 
-      <UBadge color="emerald" variant="solid" size="sm">
+      <UBadge color="success" variant="solid" size="sm">
         Session Active
       </UBadge>
     </div>
@@ -132,9 +132,9 @@
               {{ survey.title }}
             </h3>
             <UBadge
-              :color="survey.is_active ? 'emerald' : 'gray'"
+              :color="survey.is_active ? 'success' : 'neutral'"
               variant="soft"
-              size="xs"
+              size="sm"
               class="shrink-0"
             >
               {{ survey.is_active ? 'Aktif' : 'Non-Aktif' }}

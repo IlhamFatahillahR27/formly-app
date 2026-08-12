@@ -184,6 +184,7 @@ async function handleConnect(params: Connection) {
       source_section_id: sourceSectionId,
       question_id: questionId,
       operator,
+      condition_value: null,
       target_section_id: targetSectionId,
     })
   }

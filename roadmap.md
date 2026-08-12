@@ -301,13 +301,14 @@ formly-app/
 **Goal:** Pembersihan kode (zero `any`), audit performa, dan pengujian menyeluruh (E2E) seluruh aplikasi.
 
 #### 📝 Tasks Checklist
-- [ ] **Type Safety Audit:**
+- [x] **Type Safety Audit:**
   - Verifikasi seluruh file TypeScript/Vue tidak menggunakan `any`
   - Pastikan seluruh data fetching menggunakan auto-generated types dari `types/supabase.ts`
-- [ ] **UI/UX Refinement:**
+- [x] **UI/UX Refinement:**
   - Konsistensi penggunaan komponen Nuxt UI (`UButton`, `UInput`, `UTextarea`, `USelect`, `UTable`, `UModal`, `UTabs`, `UToggle`, `UNotifications`)
+  - Pembersihan dan penyelarasan badge (`UBadge` size `sm`)
   - Optimasi antarmuka untuk berbagai ukuran layar (responsive layout)
-- [ ] **Performance Audit:**
+- [x] **Performance Audit:**
   - Pastikan event canvas Vue Flow aman dari memory leak dan tidak membebani browser
 
 #### 🧪 Backend Testing Strategy

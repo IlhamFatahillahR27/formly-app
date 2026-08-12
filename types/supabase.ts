@@ -308,3 +308,11 @@ export interface Database {
     }
   }
 }
+
+export type SurveyRow = Database['public']['Tables']['surveys']['Row']
+export type SectionRow = Database['public']['Tables']['sections']['Row']
+export type QuestionRow = Database['public']['Tables']['questions']['Row']
+export type SectionLogicRow = Database['public']['Tables']['section_logic']['Row']
+export type ResponseRow = Database['public']['Tables']['responses']['Row']
+export type AnswerRow = Database['public']['Tables']['answers']['Row']
+

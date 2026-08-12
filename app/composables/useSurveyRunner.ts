@@ -1,21 +1,19 @@
-import { ref, computed } from 'vue'
-import type { Database } from '~/types/supabase'
+import { ref, shallowRef, computed } from 'vue'
+import type { Database, Json, SurveyRow, SectionRow, QuestionRow, SectionLogicRow } from '~/types/supabase'
 
-export type SurveyRow = Database['public']['Tables']['surveys']['Row']
-export type SectionRow = Database['public']['Tables']['sections']['Row']
-export type QuestionRow = Database['public']['Tables']['questions']['Row']
-export type SectionLogicRow = Database['public']['Tables']['section_logic']['Row']
+export type { SurveyRow, SectionRow, QuestionRow, SectionLogicRow }
 
 export function useSurveyRunner() {
   const supabase = useSupabaseClient<Database>()
 
-  const survey = ref<SurveyRow | null>(null)
-  const sections = ref<SectionRow[]>([])
-  const allQuestions = ref<QuestionRow[]>([])
-  const allLogicRules = ref<SectionLogicRow[]>([])
+  const survey = shallowRef<SurveyRow | null>(null)
+  const sections = shallowRef<SectionRow[]>([])
+  const allQuestions = shallowRef<QuestionRow[]>([])
+  const allLogicRules = shallowRef<SectionLogicRow[]>([])
 
   const currentSectionId = ref<string | null>(null)
-  const answers = ref<Record<string, any>>({})
+  const answers = ref<Record<string, unknown>>({})
+
   const navigationHistory = ref<string[]>([])
   const completedCategories = ref<string[]>([])
 
@@ -25,14 +23,15 @@ export function useSurveyRunner() {
   const errorMessage = ref<string | null>(null)
   const validationErrors = ref<Record<string, string>>({})
 
-  const currentSection = computed(() => {
+  const currentSection = computed<SectionRow | null>(() => {
     if (!currentSectionId.value) return null
     return sections.value.find((s) => s.id === currentSectionId.value) || null
   })
 
-  const currentQuestions = computed(() => {
-    if (!currentSectionId.value) return []
-    return allQuestions.value.filter((q) => q.section_id === currentSectionId.value)
+  const currentQuestions = computed<QuestionRow[]>(() => {
+    const secId = currentSectionId.value
+    if (!secId) return []
+    return allQuestions.value.filter((q) => q.section_id === secId)
   })
 
   /**
@@ -88,7 +87,7 @@ export function useSurveyRunner() {
       }
 
       // 3. Set starting section
-      const startId = surveyData.start_section_id || sections.value[0]?.id
+      const startId = surveyData.start_section_id || sections.value[0]?.id || null
       currentSectionId.value = startId
 
       // 4. Fetch all questions for these sections
@@ -124,7 +123,7 @@ export function useSurveyRunner() {
     }
   }
 
-  function setAnswer(questionId: string, value: any) {
+  function setAnswer(questionId: string, value: unknown) {
     answers.value[questionId] = value
     if (validationErrors.value[questionId]) {
       delete validationErrors.value[questionId]
@@ -141,7 +140,7 @@ export function useSurveyRunner() {
         if (val === undefined || val === null || val === '') {
           validationErrors.value[q.id] = 'Pertanyaan ini wajib diisi'
           isValid = false
-        } else if (typeof val === 'object' && !val.id && !val.text) {
+        } else if (typeof val === 'object' && val !== null && !('id' in val) && !('text' in val)) {
           validationErrors.value[q.id] = 'Pertanyaan ini wajib diisi'
           isValid = false
         }
@@ -151,11 +150,12 @@ export function useSurveyRunner() {
     return isValid
   }
 
-  function evaluateRule(rule: SectionLogicRow, userAns: any): boolean {
+  function evaluateRule(rule: SectionLogicRow, userAns: unknown): boolean {
     if (userAns === undefined || userAns === null) return false
     let answerText = ''
     if (typeof userAns === 'object' && userAns !== null) {
-      answerText = userAns.id || userAns.text || ''
+      const obj = userAns as Record<string, unknown>
+      answerText = String(obj.id || obj.text || '')
     } else {
       answerText = String(userAns)
     }
@@ -205,7 +205,8 @@ export function useSurveyRunner() {
 
     const currentIndex = sections.value.findIndex((s) => s.id === currentSecId)
     if (currentIndex !== -1 && currentIndex + 1 < sections.value.length) {
-      return sections.value[currentIndex + 1].id
+      const nextSec = sections.value[currentIndex + 1]
+      return nextSec ? nextSec.id : null
     }
 
     return null
@@ -222,14 +223,23 @@ export function useSurveyRunner() {
     for (const q of currentQuestions.value) {
       if (q.type === 'multiple_choice' && answers.value[q.id]) {
         const val = answers.value[q.id]
-        const optText = typeof val === 'object' ? val.text || val.id : String(val)
+        let optText = ''
+        let optId = ''
+        if (val && typeof val === 'object') {
+          const obj = val as Record<string, unknown>
+          optText = String(obj.text || obj.id || '')
+          optId = String(obj.id || '')
+        } else if (val !== null && val !== undefined) {
+          optText = String(val)
+          optId = String(val)
+        }
         const isGeneric = ['ya', 'tidak', 'yes', 'no'].includes(optText.trim().toLowerCase())
         if (!isGeneric) {
-          const uniqueKey = `${q.id}_${typeof val === 'object' ? val.id : val}`
+          const uniqueKey = `${q.id}_${optId || optText}`
           if (!completedCategories.value.includes(uniqueKey)) {
             completedCategories.value.push(uniqueKey)
           }
-          if (!completedCategories.value.includes(optText)) {
+          if (optText && !completedCategories.value.includes(optText)) {
             completedCategories.value.push(optText)
           }
         }
@@ -291,8 +301,8 @@ export function useSurveyRunner() {
       }
 
       // 2. Insert all answer records into DB
-      const answerRowsToInsert = Object.entries(answers.value).map(([questionId, rawVal]) => {
-        let answer_value: any = rawVal
+      const answerRowsToInsert: Database['public']['Tables']['answers']['Insert'][] = Object.entries(answers.value).map(([questionId, rawVal]) => {
+        let answer_value: Json = rawVal as Json
         if (typeof rawVal === 'string' || typeof rawVal === 'number' || typeof rawVal === 'boolean') {
           answer_value = rawVal
         } else if (rawVal !== null && rawVal !== undefined) {

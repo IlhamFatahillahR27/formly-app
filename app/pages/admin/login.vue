@@ -122,8 +122,8 @@ async function handleLogin() {
       }
       await router.push('/admin/dashboard')
     }
-  } catch (err: any) {
-    errorMessage.value = err.message || 'Terjadi kesalahan sistem.'
+  } catch (err: unknown) {
+    errorMessage.value = err instanceof Error ? err.message : 'Terjadi kesalahan sistem.'
   } finally {
     isLoading.value = false
   }

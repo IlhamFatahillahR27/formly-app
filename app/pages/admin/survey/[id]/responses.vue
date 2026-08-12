@@ -75,21 +75,21 @@
           <!-- Custom Column: Response ID -->
           <template #responseId-cell="{ row }">
             <span class="font-mono text-xs font-semibold text-primary-600 dark:text-primary-400">
-              #{{ (row.original?.responseId || row.responseId || '').slice(0, 8) }}
+              #{{ (row.original?.responseId || '').slice(0, 8) }}
             </span>
           </template>
 
           <!-- Custom Column: Submitted At -->
           <template #submittedAt-cell="{ row }">
             <span class="text-xs text-gray-600 dark:text-gray-300">
-              {{ formatDate(row.original?.submittedAt || row.submittedAt) }}
+              {{ formatDate(row.original?.submittedAt || '') }}
             </span>
           </template>
 
           <!-- Custom Column: Answers Count -->
           <template #answersCount-cell="{ row }">
             <UBadge color="neutral" variant="subtle" size="sm">
-              {{ row.original?.answersCount ?? row.answersCount }} Jawaban
+              {{ row.original?.answersCount ?? 0 }} Jawaban
             </UBadge>
           </template>
 
@@ -100,35 +100,7 @@
               variant="subtle"
               size="xs"
               icon="i-heroicons-eye"
-              @click="openDetailModal(row.original || row)"
-            >
-              Lihat Detail
-            </UButton>
-          </template>
-
-          <!-- Fallback slot names for backward compatibility -->
-          <template #responseId-data="{ row }">
-            <span class="font-mono text-xs font-semibold text-primary-600 dark:text-primary-400">
-              #{{ (row.responseId || '').slice(0, 8) }}
-            </span>
-          </template>
-          <template #submittedAt-data="{ row }">
-            <span class="text-xs text-gray-600 dark:text-gray-300">
-              {{ formatDate(row.submittedAt) }}
-            </span>
-          </template>
-          <template #answersCount-data="{ row }">
-            <UBadge color="neutral" variant="subtle" size="sm">
-              {{ row.answersCount }} Jawaban
-            </UBadge>
-          </template>
-          <template #actions-data="{ row }">
-            <UButton
-              color="primary"
-              variant="subtle"
-              size="xs"
-              icon="i-heroicons-eye"
-              @click="openDetailModal(row)"
+              @click="openDetailModal(row.original)"
             >
               Lihat Detail
             </UButton>
@@ -206,7 +178,7 @@
               <!-- Section Header Banner -->
               <div class="bg-primary-50/70 dark:bg-primary-950/30 border border-primary-200/70 dark:border-primary-900/50 px-3 py-2 rounded-lg flex items-center justify-between">
                 <div class="flex items-center gap-2">
-                  <UBadge color="primary" variant="solid" size="xs">
+                  <UBadge color="primary" variant="solid" size="sm">
                     Section {{ group.sectionIndex }}
                   </UBadge>
                   <span class="text-xs font-bold text-gray-900 dark:text-white">
@@ -237,14 +209,14 @@
 
                   <!-- Answers for this question -->
                   <div class="pt-2 border-t border-gray-100 dark:border-gray-800 space-y-1">
-                    <template v-if="selectedResponse.answersMap[item.question.id] && selectedResponse.answersMap[item.question.id].length > 0">
+                    <template v-if="getAnswersForQuestion(item.question.id).length > 0">
                       <div
-                        v-for="(ansVal, aIdx) in selectedResponse.answersMap[item.question.id]"
+                        v-for="(ansVal, aIdx) in getAnswersForQuestion(item.question.id)"
                         :key="aIdx"
                         class="p-2 bg-gray-50 dark:bg-gray-800/80 rounded-md text-sm text-gray-800 dark:text-gray-200 flex items-center justify-between"
                       >
                         <span>{{ ansVal }}</span>
-                        <span v-if="selectedResponse.answersMap[item.question.id].length > 1" class="text-[10px] text-primary-500 font-medium">
+                        <span v-if="getAnswersForQuestion(item.question.id).length > 1" class="text-[10px] text-primary-500 font-medium">
                           Iterasi {{ aIdx + 1 }}
                         </span>
                       </div>
@@ -276,7 +248,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, shallowRef, computed, onMounted } from 'vue'
 import { useSurveyAnalytics, formatFriendlyDate, type DetailedResponseRow, type QuestionRow, type SectionRow } from '~/composables/useSurveyAnalytics'
 
 definePageMeta({
@@ -292,16 +264,16 @@ const { fetchDetailedResponses, exportToCSV } = useSurveyAnalytics()
 const isLoading = ref(true)
 const isExporting = ref(false)
 const errorMessage = ref<string | null>(null)
-const responsesList = ref<DetailedResponseRow[]>([])
-const questions = ref<QuestionRow[]>([])
-const sections = ref<SectionRow[]>([])
+const responsesList = shallowRef<DetailedResponseRow[]>([])
+const questions = shallowRef<QuestionRow[]>([])
+const sections = shallowRef<SectionRow[]>([])
 
 const searchQuery = ref('')
 const currentPage = ref(1)
 const itemsPerPage = ref(10)
 
 const isModalOpen = ref(false)
-const selectedResponse = ref<DetailedResponseRow | null>(null)
+const selectedResponse = shallowRef<DetailedResponseRow | null>(null)
 
 const columns = [
   { accessorKey: 'responseId', header: 'ID Respon' },
@@ -343,7 +315,7 @@ const groupedQuestionsForModal = computed(() => {
     if (!sectionMap[q.section_id]) {
       sectionMap[q.section_id] = []
     }
-    sectionMap[q.section_id].push(q)
+    sectionMap[q.section_id]?.push(q)
   }
 
   let globalIdx = 0
@@ -370,9 +342,16 @@ function formatDate(dateStr: string): string {
   return formatFriendlyDate(dateStr)
 }
 
-function openDetailModal(row: DetailedResponseRow) {
-  selectedResponse.value = row
-  isModalOpen.value = true
+function getAnswersForQuestion(questionId: string): string[] {
+  if (!selectedResponse.value?.answersMap) return []
+  return selectedResponse.value.answersMap[questionId] || []
+}
+
+function openDetailModal(row: DetailedResponseRow | undefined) {
+  if (row) {
+    selectedResponse.value = row
+    isModalOpen.value = true
+  }
 }
 
 async function loadData() {

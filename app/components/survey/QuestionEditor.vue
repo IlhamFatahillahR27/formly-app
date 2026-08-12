@@ -10,7 +10,7 @@
             :icon="isCollapsed ? 'i-heroicons-chevron-right' : 'i-heroicons-chevron-down'"
             @click="isCollapsed = !isCollapsed"
           />
-          <UBadge color="primary" variant="soft" size="xs">
+          <UBadge color="primary" variant="soft" size="sm">
             Pertanyaan #{{ index + 1 }}
           </UBadge>
           <span class="text-xs font-semibold text-gray-800 dark:text-gray-200 truncate max-w-xs">
@@ -218,7 +218,7 @@
           >
             <div class="flex items-center space-x-1 text-gray-700 dark:text-gray-300">
               <span class="font-medium">JIKA</span>
-              <UBadge size="xs" color="info" variant="outline">{{ rule.operator }}</UBadge>
+              <UBadge size="sm" color="info" variant="outline">{{ rule.operator }}</UBadge>
               <span v-if="rule.condition_value" class="font-bold text-emerald-600 dark:text-emerald-400">
                 "{{ rule.condition_value }}"
               </span>
@@ -356,22 +356,23 @@ const maxRating = computed<number>(() => {
   if (!props.question.options || typeof props.question.options !== 'object' || Array.isArray(props.question.options)) {
     return 5
   }
-  const val = Number((props.question.options as any).max_rating || (props.question.options as any).maxRating || 5)
+  const opts = props.question.options as Record<string, unknown>
+  const val = Number(opts.max_rating || opts.maxRating || 5)
   return Math.min(Math.max(isNaN(val) ? 5 : val, 1), 10)
 })
 
 async function onMaxRatingChange(e: Event) {
-  const target = e.target as HTMLSelectElement
-  const newMax = Math.min(Math.max(Number(target.value) || 5, 1), 10)
+  const target = e.target as HTMLSelectElement | null
+  const newMax = Math.min(Math.max(Number(target?.value) || 5, 1), 10)
   
-  let currentOpts: Record<string, any> = {}
+  let currentOpts: Record<string, unknown> = {}
   if (props.question.options && typeof props.question.options === 'object' && !Array.isArray(props.question.options)) {
-    currentOpts = { ...(props.question.options as any) }
+    currentOpts = { ...(props.question.options as Record<string, unknown>) }
   }
   currentOpts.max_rating = newMax
 
   await updateQuestion(props.question.id, {
-    options: currentOpts as any,
+    options: currentOpts as unknown as typeof props.question.options,
   })
 }
 
@@ -428,7 +429,7 @@ watch(
     if (newType === 'multiple_choice') {
       newRuleOperator.value = 'selected'
       if (optionsList.value.length > 0) {
-        newRuleConditionValue.value = optionsList.value[0].id
+        newRuleConditionValue.value = optionsList.value[0]?.id || ''
       }
     } else {
       newRuleOperator.value = 'filled'
@@ -504,8 +505,8 @@ async function deleteRule(ruleId: string) {
 
 async function saveNewRule() {
   if (!newRuleTargetSectionId.value) {
-    if (props.sections.length > 0) {
-      newRuleTargetSectionId.value = props.sections[0].id
+    if (props.sections && props.sections.length > 0) {
+      newRuleTargetSectionId.value = props.sections[0]?.id || ''
     } else {
       return
     }

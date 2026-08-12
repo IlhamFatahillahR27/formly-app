@@ -30,9 +30,9 @@
               @click="handleToggleStatus(!survey.is_active)"
             >
               <UBadge
-                :color="survey.is_active ? 'emerald' : 'gray'"
+                :color="survey.is_active ? 'success' : 'neutral'"
                 variant="soft"
-                size="xs"
+                size="sm"
               >
                 {{ survey.is_active ? 'Aktif / Publik' : 'Non-Aktif' }}
               </UBadge>
@@ -80,7 +80,7 @@
 
         <!-- Preview Button -->
         <UButton
-          color="emerald"
+          color="success"
           variant="soft"
           icon="i-heroicons-eye"
           size="sm"

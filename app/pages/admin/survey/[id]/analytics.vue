@@ -256,7 +256,7 @@
                   <span class="text-xs font-semibold text-gray-500">
                     Pertanyaan #{{ getGlobalQuestionIndex(qa.question.id) }}
                   </span>
-                  <UBadge color="neutral" variant="subtle" size="xs">
+                  <UBadge color="neutral" variant="subtle" size="sm">
                     {{ formatQuestionType(qa.question.type) }}
                   </UBadge>
                   <span v-if="qa.question.is_required" class="text-xs text-rose-500 font-medium">Wajib</span>
@@ -374,7 +374,6 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
 import {
   useSurveyAnalytics,
   formatFriendlyDate,
@@ -383,6 +382,7 @@ import {
 } from '~/composables/useSurveyAnalytics'
 import AnalyticsChartPie from '~/components/analytics/ChartPie.vue'
 import AnalyticsChartBar from '~/components/analytics/ChartBar.vue'
+import { ref, shallowRef, computed, onMounted } from 'vue'
 
 definePageMeta({
   middleware: 'auth',
@@ -397,9 +397,9 @@ const { fetchAnalytics, exportToCSV } = useSurveyAnalytics()
 const isLoading = ref(true)
 const isExporting = ref(false)
 const errorMessage = ref<string | null>(null)
-const analyticsData = ref<AnalyticsSummary | null>(null)
+const analyticsData = shallowRef<AnalyticsSummary | null>(null)
 
-const formattedLatestSubmission = computed(() => {
+const formattedLatestSubmission = computed<string>(() => {
   if (!analyticsData.value?.latestSubmission) return '-'
   return formatFriendlyDate(analyticsData.value.latestSubmission)
 })

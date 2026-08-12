@@ -23,7 +23,7 @@
           </div>
 
           <div class="space-y-2">
-            <UBadge v-if="survey?.title" color="neutral" variant="soft" size="xs">
+            <UBadge v-if="survey?.title" color="neutral" variant="soft" size="sm">
               {{ survey.title }}
             </UBadge>
             <h2 class="text-2xl font-bold text-gray-900 dark:text-white">
@@ -89,7 +89,7 @@
                 <span class="text-xs font-semibold tracking-wider uppercase text-primary-600 dark:text-primary-400">
                   {{ survey.title }}
                 </span>
-                <UBadge v-if="currentIterationCount > 1" color="amber" variant="soft" size="xs">
+                <UBadge v-if="currentIterationCount > 1" color="warning" variant="soft" size="sm">
                   Putaran Ke-{{ currentIterationCount }}
                 </UBadge>
               </div>
@@ -257,14 +257,19 @@ const hasNextSection = computed(() => {
 const totalCategoryCount = computed<number>(() => {
   for (const q of allQuestions.value) {
     if (q.type === 'multiple_choice' && q.options) {
-      let opts: any[] = []
+      let opts: unknown[] = []
       if (Array.isArray(q.options)) opts = q.options
       else if (typeof q.options === 'string') {
         try { opts = JSON.parse(q.options) } catch {}
       }
       if (Array.isArray(opts) && opts.length > 1) {
-        const hasCategories = opts.some((o: any) => {
-          const txt = String(o.text || o.label || o).trim().toLowerCase()
+        const hasCategories = opts.some((o: unknown) => {
+          if (typeof o === 'object' && o !== null) {
+            const obj = o as Record<string, unknown>
+            const txt = String(obj.text || obj.label || '').trim().toLowerCase()
+            return !['ya', 'tidak', 'yes', 'no'].includes(txt)
+          }
+          const txt = String(o).trim().toLowerCase()
           return !['ya', 'tidak', 'yes', 'no'].includes(txt)
         })
         if (hasCategories) {

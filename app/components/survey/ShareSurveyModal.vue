@@ -278,7 +278,7 @@ async function downloadQRCard() {
     ctx.font = 'bold 44px sans-serif'
     ctx.textAlign = 'center'
     
-    const titleText = props.survey.title || 'Judul Survei'
+    const titleText = props.survey?.title || 'Judul Survei'
     const titleLines = getWrappedLines(ctx, titleText, width - 180)
     let startY = 220
     for (const line of titleLines.slice(0, 2)) {
@@ -287,10 +287,10 @@ async function downloadQRCard() {
     }
 
     // 6. Draw Survey Description if present
-    if (props.survey.description) {
+    if (props.survey?.description) {
       ctx.fillStyle = '#94a3b8' // Slate 400
       ctx.font = '22px sans-serif'
-      const descLines = getWrappedLines(ctx, props.survey.description, width - 240)
+      const descLines = getWrappedLines(ctx, props.survey?.description || '', width - 240)
       for (const line of descLines.slice(0, 2)) {
         ctx.fillText(line, width / 2, startY + 10)
         startY += 32
@@ -339,7 +339,7 @@ async function downloadQRCard() {
 
     // 9. Export Canvas to PNG Blob & Trigger Download
     const dataUrl = canvas.toDataURL('image/png')
-    const sanitizedTitle = (props.survey.title || 'survey').toLowerCase().replace(/[^a-z0-9]/g, '_')
+    const sanitizedTitle = (props.survey?.title || 'survey').toLowerCase().replace(/[^a-z0-9]/g, '_')
     
     const link = document.createElement('a')
     link.href = dataUrl

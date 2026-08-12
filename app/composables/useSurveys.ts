@@ -1,12 +1,12 @@
-import type { Database } from '~/types/supabase'
+import type { Database, SurveyRow } from '~/types/supabase'
 
-export type SurveyRow = Database['public']['Tables']['surveys']['Row']
 export type SurveyWithStats = SurveyRow & {
   sections?: { count: number }[]
   responses?: { count: number }[]
   section_count?: number
   response_count?: number
 }
+
 
 export function useSurveys() {
   const supabase = useSupabaseClient<Database>()

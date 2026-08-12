@@ -10,7 +10,7 @@
     <!-- Target Handle (Incoming Connections to this section) -->
     <Handle
       type="target"
-      position="top"
+      :position="Position.Top"
       :id="`sec-target-${data.section.id}`"
       class="!bg-primary-500 !w-3 !h-3 !-top-2 hover:scale-125 transition-transform"
     />
@@ -25,16 +25,16 @@
       </div>
 
       <div class="flex items-center space-x-1 shrink-0">
-        <UBadge v-if="data.isStart" size="xs" color="emerald" variant="soft">
+        <UBadge v-if="data.isStart" size="sm" color="success" variant="soft">
           Start
         </UBadge>
-        <UBadge v-if="data.section.is_end_section" size="xs" color="amber" variant="soft">
+        <UBadge v-if="data.section.is_end_section" size="sm" color="warning" variant="soft">
           End
         </UBadge>
 
         <UButton
-          size="2xs"
-          color="gray"
+          size="sm"
+          color="neutral"
           variant="ghost"
           :icon="isCollapsed ? 'i-heroicons-chevron-down' : 'i-heroicons-chevron-up'"
           @click.stop="toggleCollapse"
@@ -60,7 +60,7 @@
       >
         <div class="flex items-start justify-between font-medium text-gray-800 dark:text-gray-200 mb-1 pr-3">
           <span>{{ idx + 1 }}. {{ q.question_text }}</span>
-          <UBadge size="2xs" variant="outline" color="gray" class="shrink-0 ml-1">
+          <UBadge size="sm" variant="outline" color="neutral" class="shrink-0 ml-1">
             {{ getQuestionTypeLabel(q.type) }}
           </UBadge>
         </div>
@@ -69,7 +69,7 @@
         <Handle
           v-if="q.type !== 'multiple_choice'"
           type="source"
-          position="right"
+          :position="Position.Right"
           :id="`q-source-${q.id}`"
           class="!bg-blue-500 !w-2.5 !h-2.5 !-right-1.5 hover:scale-125 transition-transform"
         />
@@ -85,7 +85,7 @@
             <!-- Source handle for choice option branching -->
             <Handle
               type="source"
-              position="right"
+              :position="Position.Right"
               :id="`opt-source-${q.id}-${opt.id}`"
               class="!bg-emerald-500 !w-2.5 !h-2.5 !-right-1.5 hover:scale-125 transition-transform"
             />
@@ -100,7 +100,7 @@
       <UIcon name="i-heroicons-arrow-small-right" class="w-3.5 h-3.5 text-primary-500" />
       <Handle
         type="source"
-        position="right"
+        :position="Position.Right"
         :id="`sec-fallback-${data.section.id}`"
         class="!bg-purple-500 !w-3 !h-3 !-right-1.5 hover:scale-125 transition-transform"
       />
@@ -109,7 +109,7 @@
 </template>
 
 <script setup lang="ts">
-import { Handle } from '@vue-flow/core'
+import { Handle, Position } from '@vue-flow/core'
 import type { SectionRow, QuestionRow, QuestionOption } from '~/composables/useSurveyBuilder'
 
 export interface SectionNodeData {

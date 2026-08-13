@@ -487,6 +487,42 @@ export function useSurveyBuilder() {
   }
 
   /**
+   * Update Logic Rule
+   */
+  async function updateLogicRule(
+    ruleId: string,
+    updates: Partial<Omit<SectionLogicRow, 'id' | 'survey_id' | 'created_at' | 'updated_at'>>
+  ): Promise<boolean> {
+    saving.value = true
+    try {
+      const { data, error: err } = await supabase
+        .from('section_logic')
+        .update(updates)
+        .eq('id', ruleId)
+        .select()
+        .single()
+
+      if (err || !data) {
+        error.value = err?.message || 'Gagal mengedit aturan logika.'
+        saving.value = false
+        return false
+      }
+
+      const idx = logicRules.value.findIndex((l) => l.id === ruleId)
+      if (idx !== -1) {
+        logicRules.value[idx] = data
+      }
+
+      saving.value = false
+      return true
+    } catch (err: unknown) {
+      error.value = err instanceof Error ? err.message : 'Kesalahan mengupdate aturan logika.'
+      saving.value = false
+      return false
+    }
+  }
+
+  /**
    * Update survey active status directly from builder
    */
   async function toggleSurveyStatus(isActive: boolean): Promise<boolean> {
@@ -532,6 +568,7 @@ export function useSurveyBuilder() {
     updateQuestion,
     deleteQuestion,
     createLogicRule,
+    updateLogicRule,
     deleteLogicRule,
     toggleSurveyStatus,
   }

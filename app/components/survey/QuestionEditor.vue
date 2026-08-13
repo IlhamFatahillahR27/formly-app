@@ -222,7 +222,7 @@
               <span v-if="rule.condition_value" class="font-bold text-emerald-600 dark:text-emerald-400">
                 "{{ rule.condition_value }}"
               </span>
-              <span>MACAM KE &rarr;</span>
+              <span>LANJUT KE &rarr;</span>
               <span class="font-bold underline">{{ getSectionTitle(rule.target_section_id) }}</span>
             </div>
 

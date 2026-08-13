@@ -11,8 +11,8 @@
     <Handle
       type="target"
       :position="Position.Top"
-      :id="`sec-target-${data.section.id}`"
-      class="!bg-primary-500 !w-3 !h-3 !-top-2 hover:scale-125 transition-transform"
+      :id="`sec-target__${data.section.id}`"
+      class="!bg-primary-500 !w-3.5 !h-3.5 !-top-2 !z-30 hover:scale-125 transition-transform cursor-pointer"
     />
 
     <!-- Header -->
@@ -65,13 +65,12 @@
           </UBadge>
         </div>
 
-        <!-- Question handle for non-MC questions -->
+        <!-- Question handle -->
         <Handle
-          v-if="q.type !== 'multiple_choice'"
           type="source"
           :position="Position.Right"
-          :id="`q-source-${q.id}`"
-          class="!bg-blue-500 !w-2.5 !h-2.5 !-right-1.5 hover:scale-125 transition-transform"
+          :id="`q-source__${q.id}`"
+          class="!bg-blue-500 !w-3 !h-3 !-right-1.5 !z-30 hover:scale-125 transition-transform cursor-pointer"
         />
 
         <!-- Multiple Choice Options -->
@@ -86,8 +85,8 @@
             <Handle
               type="source"
               :position="Position.Right"
-              :id="`opt-source-${q.id}-${opt.id}`"
-              class="!bg-emerald-500 !w-2.5 !h-2.5 !-right-1.5 hover:scale-125 transition-transform"
+              :id="`opt-source__${q.id}__${opt.id}`"
+              class="!bg-emerald-500 !w-3 !h-3 !-right-1.5 !z-30 hover:scale-125 transition-transform cursor-pointer"
             />
           </div>
         </div>
@@ -101,8 +100,8 @@
       <Handle
         type="source"
         :position="Position.Right"
-        :id="`sec-fallback-${data.section.id}`"
-        class="!bg-purple-500 !w-3 !h-3 !-right-1.5 hover:scale-125 transition-transform"
+        :id="`sec-fallback__${data.section.id}`"
+        class="!bg-purple-500 !w-3.5 !h-3.5 !-right-1.5 !z-30 hover:scale-125 transition-transform cursor-pointer"
       />
     </div>
   </div>

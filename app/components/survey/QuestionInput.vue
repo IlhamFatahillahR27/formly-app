@@ -1,7 +1,7 @@
 <template>
   <div class="space-y-2 p-4 sm:p-5 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm transition-all">
     <!-- Question Header -->
-    <div class="flex items-start justify-between">
+    <div class="flex items-start justify-between gap-2">
       <h3 class="text-base sm:text-lg font-medium text-gray-900 dark:text-white leading-snug">
         {{ question.question_text || 'Pertanyaan Tanpa Judul' }}
         <span v-if="question.is_required" class="text-red-500 ml-0.5" title="Wajib diisi">*</span>
@@ -40,26 +40,28 @@
 
       <!-- 3. Multiple Choice -->
       <div v-else-if="question.type === 'multiple_choice'" class="space-y-2">
-        <div
-          v-for="(option, idx) in availableOptions"
-          :key="option.id || idx"
-          class="flex items-center p-3 rounded-lg border cursor-pointer transition-all select-none"
-          :class="[
-            isOptionSelected(option)
-              ? 'border-primary-500 bg-primary-50/50 dark:bg-primary-950/20 ring-1 ring-primary-500'
-              : 'border-gray-200 dark:border-gray-800 hover:border-gray-300 dark:hover:border-gray-700 bg-white dark:bg-gray-900'
-          ]"
-          @click="selectOption(option)"
-        >
-          <input
-            type="radio"
-            :name="`q_${question.id}`"
-            :checked="isOptionSelected(option)"
-            class="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 cursor-pointer pointer-events-none"
-          />
-          <span class="ml-3 text-sm font-medium text-gray-800 dark:text-gray-200">
-            {{ option.text }}
-          </span>
+        <div class="grid grid-cols-1 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-1 gap-2 sm:gap-2.5">
+          <div
+            v-for="(option, idx) in availableOptions"
+            :key="option.id || idx"
+            class="flex items-center p-3 rounded-lg border cursor-pointer transition-all select-none min-h-[44px]"
+            :class="[
+              isOptionSelected(option)
+                ? 'border-primary-500 bg-primary-50/50 dark:bg-primary-950/20 ring-1 ring-primary-500'
+                : 'border-gray-200 dark:border-gray-800 hover:border-gray-300 dark:hover:border-gray-700 bg-white dark:bg-gray-900'
+            ]"
+            @click="selectOption(option)"
+          >
+            <input
+              type="radio"
+              :name="`q_${question.id}`"
+              :checked="isOptionSelected(option)"
+              class="h-4 w-4 aspect-square text-primary-600 focus:ring-primary-500 border-gray-300 cursor-pointer pointer-events-none shrink-0"
+            />
+            <span class="ml-3 text-sm font-medium text-gray-800 dark:text-gray-200">
+              {{ option.text }}
+            </span>
+          </div>
         </div>
 
         <p v-if="availableOptions.length === 0" class="text-xs text-gray-500 italic py-1">
@@ -77,12 +79,12 @@
             v-for="star in maxStars"
             :key="star"
             type="button"
-            class="p-1 sm:p-1.5 focus:outline-none transition-transform duration-150 transform hover:scale-125 active:scale-95 cursor-pointer"
+            class="w-8 h-8 sm:w-9 sm:h-9 aspect-square p-1 sm:p-1.5 focus:outline-none transition-transform duration-150 transform hover:scale-125 active:scale-95 cursor-pointer flex items-center justify-center"
             @mouseenter="hoverRating = star"
             @click="selectRating(star)"
           >
             <svg
-              class="w-8 h-8 sm:w-9 sm:h-9 transition-colors duration-150 drop-shadow-xs"
+              class="w-full h-full aspect-square transition-colors duration-150 drop-shadow-xs"
               :class="[
                 star <= (hoverRating ?? Number(modelValue) ?? 0)
                   ? 'text-amber-400 fill-amber-400'
@@ -96,7 +98,7 @@
 
           <!-- Selected Rating Indicator / Score Badge -->
           <div class="ml-2 flex items-center space-x-1">
-            <span v-if="modelValue" class="text-sm font-bold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/50 px-2.5 py-1 rounded-full border border-amber-200 dark:border-amber-900/50">
+            <span v-if="modelValue" class="text-xs sm:text-sm font-bold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/50 px-2.5 py-1 rounded-full border border-amber-200 dark:border-amber-900/50">
               {{ modelValue }} / {{ maxStars }} Bintang
             </span>
             <span v-else class="text-xs text-gray-400 italic">

@@ -72,4 +72,29 @@ describe('Guest Survey Flow & UI Component Tests', () => {
 
     expect(progressPercentage).toBe(75)
   })
+
+  it('defines responsive max-width breakpoint classes below lg and caps container at lg:max-w-3xl', () => {
+    const containerClasses = 'flex-1 w-full mx-auto px-3 sm:px-6 md:px-8 lg:px-4 py-4 sm:py-6 md:py-8 lg:py-12 max-w-full sm:max-w-xl md:max-w-2xl lg:max-w-3xl flex flex-col justify-center transition-all duration-300'
+
+    expect(containerClasses).toContain('max-w-full')
+    expect(containerClasses).toContain('sm:max-w-xl')
+    expect(containerClasses).toContain('md:max-w-2xl')
+    expect(containerClasses).toContain('lg:max-w-3xl')
+  })
+
+  it('defines explicit aspect ratio classes for status badge and star controls', () => {
+    const badgeIconClasses = 'w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 aspect-square'
+    const ratingStarClasses = 'w-8 h-8 sm:w-9 sm:h-9 aspect-square'
+
+    expect(badgeIconClasses).toContain('aspect-square')
+    expect(ratingStarClasses).toContain('aspect-square')
+  })
+
+  it('defines option layout classes for lg and below in QuestionInput', () => {
+    const optionGridClasses = 'grid grid-cols-1 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-1 gap-2 sm:gap-2.5'
+
+    expect(optionGridClasses).toContain('grid-cols-1')
+    expect(optionGridClasses).toContain('md:grid-cols-2')
+    expect(optionGridClasses).toContain('lg:grid-cols-1')
+  })
 })

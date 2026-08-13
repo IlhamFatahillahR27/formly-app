@@ -15,4 +15,26 @@ test.describe('Phase 5: Guest Survey Execution & Dynamic Logic E2E', () => {
       // Graceful fallback if survey id fails to load backend
     })
   })
+
+  test('renders responsively without horizontal overflow on sm, md, lg, xl, and 2xl viewports', async ({ page }) => {
+    const viewports = [
+      { name: 'mobile', width: 375, height: 667 },
+      { name: 'sm', width: 640, height: 800 },
+      { name: 'md', width: 768, height: 1024 },
+      { name: 'lg', width: 1024, height: 768 },
+      { name: 'xl', width: 1280, height: 800 },
+      { name: '2xl', width: 1536, height: 900 },
+    ]
+
+    for (const vp of viewports) {
+      await page.setViewportSize({ width: vp.width, height: vp.height })
+      await page.goto('/survey/00000000-0000-0000-0000-000000000000?preview=true')
+      
+      const bodyWidth = await page.evaluate(() => document.body.clientWidth)
+      const scrollWidth = await page.evaluate(() => document.body.scrollWidth)
+      
+      // Ensure no horizontal scrollbar overflow
+      expect(scrollWidth).toBeLessThanOrEqual(bodyWidth + 1)
+    }
+  })
 })

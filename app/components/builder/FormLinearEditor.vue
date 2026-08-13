@@ -195,6 +195,28 @@
         </div>
 
         <div class="flex items-center space-x-2">
+          <!-- Section Reorder Controls -->
+          <div class="flex items-center space-x-0.5 bg-gray-100 dark:bg-gray-800 px-1 py-0.5 rounded-lg border border-gray-200 dark:border-gray-700">
+            <UButton
+              size="xs"
+              color="neutral"
+              variant="ghost"
+              icon="i-heroicons-arrow-up"
+              :disabled="sIdx === 0"
+              title="Pindahkan Section ke Atas"
+              @click="onMoveSectionUp(sec.id)"
+            />
+            <UButton
+              size="xs"
+              color="neutral"
+              variant="ghost"
+              icon="i-heroicons-arrow-down"
+              :disabled="sIdx === sections.length - 1"
+              title="Pindahkan Section ke Bawah"
+              @click="onMoveSectionDown(sec.id)"
+            />
+          </div>
+
           <!-- Start Section Toggle Button -->
           <UButton
             v-if="survey?.start_section_id !== sec.id"
@@ -306,6 +328,8 @@
             :index="qIdx"
             :sections="sections"
             :logic-rules="logicRules"
+            :is-first-question="qIdx === 0"
+            :is-last-question="qIdx === getSectionQuestions(sec.id).length - 1"
           />
         </div>
       </div>
@@ -340,6 +364,7 @@ const {
   createSection,
   updateSection,
   deleteSection,
+  moveSection,
   setStartSection,
   createQuestion,
   updateSurveyHeader,
@@ -458,6 +483,14 @@ async function handleAddSection() {
 
 async function onDeleteSection(sectionId: string) {
   await deleteSection(sectionId)
+}
+
+async function onMoveSectionUp(sectionId: string) {
+  await moveSection(sectionId, 'up')
+}
+
+async function onMoveSectionDown(sectionId: string) {
+  await moveSection(sectionId, 'down')
 }
 
 async function toggleEndSection(sec: SectionRow) {

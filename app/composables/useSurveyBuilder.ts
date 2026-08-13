@@ -583,6 +583,104 @@ export function useSurveyBuilder() {
     }
   }
 
+  /**
+   * Move Section up or down in order
+   */
+  async function moveSection(sectionId: string, direction: 'up' | 'down'): Promise<boolean> {
+    const sorted = [...sections.value].sort((a, b) => (a.order_index ?? 0) - (b.order_index ?? 0))
+    const idx = sorted.findIndex((s) => s.id === sectionId)
+    if (idx === -1) return false
+
+    const targetIdx = direction === 'up' ? idx - 1 : idx + 1
+    if (targetIdx < 0 || targetIdx >= sorted.length) return false
+
+    const currentSec = sorted[idx]
+    const neighborSec = sorted[targetIdx]
+    if (!currentSec || !neighborSec) return false
+
+    saving.value = true
+    try {
+      let currentOrder = currentSec.order_index
+      let neighborOrder = neighborSec.order_index
+
+      if (currentOrder === neighborOrder) {
+        currentOrder = idx
+        neighborOrder = targetIdx
+      }
+
+      currentSec.order_index = neighborOrder
+      neighborSec.order_index = currentOrder
+
+      sections.value = [...sorted].sort((a, b) => (a.order_index ?? 0) - (b.order_index ?? 0))
+
+      await Promise.all([
+        supabase.from('sections').update({ order_index: currentSec.order_index }).eq('id', currentSec.id),
+        supabase.from('sections').update({ order_index: neighborSec.order_index }).eq('id', neighborSec.id),
+      ])
+
+      saving.value = false
+      return true
+    } catch (err: unknown) {
+      error.value = err instanceof Error ? err.message : 'Kesalahan saat mengubah urutan section.'
+      saving.value = false
+      return false
+    }
+  }
+
+  /**
+   * Move Question up or down in order within its section
+   */
+  async function moveQuestion(questionId: string, direction: 'up' | 'down'): Promise<boolean> {
+    const qIndex = questions.value.findIndex((q) => q.id === questionId)
+    if (qIndex === -1) return false
+    const currentQ = questions.value[qIndex]
+    if (!currentQ) return false
+
+    const sectionQuestions = questions.value
+      .filter((q) => q.section_id === currentQ.section_id)
+      .sort((a, b) => (a.order_index ?? 0) - (b.order_index ?? 0))
+
+    const idx = sectionQuestions.findIndex((q) => q.id === questionId)
+    if (idx === -1) return false
+
+    const targetIdx = direction === 'up' ? idx - 1 : idx + 1
+    if (targetIdx < 0 || targetIdx >= sectionQuestions.length) return false
+
+    const neighborQ = sectionQuestions[targetIdx]
+    if (!neighborQ) return false
+
+    saving.value = true
+    try {
+      let currentOrder = currentQ.order_index
+      let neighborOrder = neighborQ.order_index
+
+      if (currentOrder === neighborOrder) {
+        currentOrder = idx
+        neighborOrder = targetIdx
+      }
+
+      currentQ.order_index = neighborOrder
+      neighborQ.order_index = currentOrder
+
+      const otherQuestions = questions.value.filter((q) => q.section_id !== currentQ.section_id)
+      const updatedSectionQuestions = [...sectionQuestions].sort((a, b) => (a.order_index ?? 0) - (b.order_index ?? 0))
+
+      questions.value = [...otherQuestions, ...updatedSectionQuestions]
+
+      await Promise.all([
+        supabase.from('questions').update({ order_index: currentQ.order_index }).eq('id', currentQ.id),
+        supabase.from('questions').update({ order_index: neighborQ.order_index }).eq('id', neighborQ.id),
+      ])
+
+      saving.value = false
+      return true
+    } catch (err: unknown) {
+      error.value = err instanceof Error ? err.message : 'Kesalahan saat mengubah urutan pertanyaan.'
+      saving.value = false
+      return false
+    }
+  }
+
   return {
     survey,
     sections,
@@ -596,10 +694,12 @@ export function useSurveyBuilder() {
     createSection,
     updateSection,
     deleteSection,
+    moveSection,
     setStartSection,
     createQuestion,
     updateQuestion,
     deleteQuestion,
+    moveQuestion,
     createLogicRule,
     updateLogicRule,
     deleteLogicRule,

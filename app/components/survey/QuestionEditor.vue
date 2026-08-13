@@ -19,6 +19,28 @@
         </div>
 
         <div class="flex items-center space-x-2 shrink-0">
+          <!-- Question Reorder Controls -->
+          <div class="flex items-center space-x-0.5 bg-gray-100 dark:bg-gray-800 px-1 py-0.5 rounded-lg border border-gray-200 dark:border-gray-700">
+            <UButton
+              size="xs"
+              color="neutral"
+              variant="ghost"
+              icon="i-heroicons-arrow-up"
+              :disabled="isFirstQuestion"
+              title="Pindahkan Pertanyaan ke Atas"
+              @click="onMoveQuestionUp"
+            />
+            <UButton
+              size="xs"
+              color="neutral"
+              variant="ghost"
+              icon="i-heroicons-arrow-down"
+              :disabled="isLastQuestion"
+              title="Pindahkan Pertanyaan ke Bawah"
+              @click="onMoveQuestionDown"
+            />
+          </div>
+
           <!-- Required / Optional Switch Toggle -->
           <div class="flex items-center space-x-1.5 bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded-lg border border-gray-200 dark:border-gray-700">
             <USwitch
@@ -139,6 +161,26 @@
             class="flex-1"
             @blur="saveOptions"
           />
+          <div class="flex items-center space-x-0.5">
+            <UButton
+              size="xs"
+              color="neutral"
+              variant="ghost"
+              icon="i-heroicons-arrow-up"
+              :disabled="oIdx === 0"
+              title="Pindahkan Opsi ke Atas"
+              @click="moveOptionUp(oIdx)"
+            />
+            <UButton
+              size="xs"
+              color="neutral"
+              variant="ghost"
+              icon="i-heroicons-arrow-down"
+              :disabled="oIdx === optionsList.length - 1"
+              title="Pindahkan Opsi ke Bawah"
+              @click="moveOptionDown(oIdx)"
+            />
+          </div>
           <UButton
             size="xs"
             color="error"
@@ -327,9 +369,11 @@ const props = defineProps<{
   index: number
   sections: SectionRow[]
   logicRules: SectionLogicRow[]
+  isFirstQuestion?: boolean
+  isLastQuestion?: boolean
 }>()
 
-const { updateQuestion, deleteQuestion, createLogicRule, deleteLogicRule } = useSurveyBuilder()
+const { updateQuestion, deleteQuestion, moveQuestion, createLogicRule, deleteLogicRule } = useSurveyBuilder()
 
 const isCollapsed = ref(false)
 
@@ -484,15 +528,36 @@ function removeOption(optId: string) {
   saveOptions()
 }
 
-function clearAllOptions() {
-  optionsList.value = []
-  saveOptions()
+function moveOptionUp(oIdx: number) {
+  if (oIdx <= 0) return
+  const item = optionsList.value.splice(oIdx, 1)[0]
+  if (item) {
+    optionsList.value.splice(oIdx - 1, 0, item)
+    saveOptions()
+  }
+}
+
+function moveOptionDown(oIdx: number) {
+  if (oIdx < 0 || oIdx >= optionsList.value.length - 1) return
+  const item = optionsList.value.splice(oIdx, 1)[0]
+  if (item) {
+    optionsList.value.splice(oIdx + 1, 0, item)
+    saveOptions()
+  }
 }
 
 async function saveOptions() {
   await updateQuestion(props.question.id, {
     options: optionsList.value as unknown as typeof props.question.options,
   })
+}
+
+async function onMoveQuestionUp() {
+  await moveQuestion(props.question.id, 'up')
+}
+
+async function onMoveQuestionDown() {
+  await moveQuestion(props.question.id, 'down')
 }
 
 async function onDelete() {

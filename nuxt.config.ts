@@ -12,7 +12,8 @@ export default defineNuxtConfig({
   },
   modules: [
     '@nuxt/ui',
-    '@nuxtjs/supabase'
+    '@nuxtjs/supabase',
+    '@vercel/analytics'
   ],
   supabase: {
     url: process.env.SUPABASE_URL || 'https://placeholder.supabase.co',

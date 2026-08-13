@@ -1,5 +1,4 @@
 import { describe, it, expect, vi } from 'vitest'
-import Papa from 'papaparse'
 
 // Stub global Nuxt composable before running tests
 vi.stubGlobal('useSupabaseClient', () => ({
@@ -20,7 +19,7 @@ import { useSurveyAnalytics, extractOptionText, formatFriendlyDate } from '~/com
 import type { SurveyRow, SectionRow, QuestionRow, ResponseRow, AnswerRow } from '~/composables/useSurveyAnalytics'
 
 describe('useSurveyAnalytics - Unit Tests & Bugfixes', () => {
-  const { parseQuestionOptions, processAnalyticsData, formatResponsesForCSV } = useSurveyAnalytics()
+  const { parseQuestionOptions, processAnalyticsData, formatResponsesForCSV, unparseCSV } = useSurveyAnalytics()
 
   it('extractOptionText correctly converts JSONB choice objects and arrays into clean human-readable strings', () => {
     // Stringified JSON object
@@ -194,7 +193,7 @@ describe('useSurveyAnalytics - Unit Tests & Bugfixes', () => {
     expect(formatted[0]['ID Respon']).toBe('#resp-123')
     expect(formatted[0]['[Section 1: Profil Responden] P1: Nama Lengkap']).toBe('Budi Utomo')
 
-    const csvString = Papa.unparse(formatted)
+    const csvString = unparseCSV(formatted)
     expect(csvString).toContain('ID Respon')
     expect(csvString).toContain('#resp-123')
     expect(csvString).toContain('[Section 1: Profil Responden] P1: Nama Lengkap')

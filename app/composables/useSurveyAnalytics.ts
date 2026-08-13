@@ -1,4 +1,3 @@
-import Papa from 'papaparse'
 import type { Database, SurveyRow, SectionRow, QuestionRow, ResponseRow, AnswerRow } from '~/types/supabase'
 
 export type { SurveyRow, SectionRow, QuestionRow, ResponseRow, AnswerRow }
@@ -619,8 +618,24 @@ export function useSurveyAnalytics() {
     })
   }
 
+/**
+ * Helper to convert array of objects into CSV format with quoted fields
+ */
+function unparseCSV(rows: Record<string, any>[]): string {
+  if (!rows || rows.length === 0) return ''
+  const headers = Object.keys(rows[0])
+  const headerRow = headers.map(h => `"${String(h).replace(/"/g, '""')}"`).join(',')
+  const dataRows = rows.map(row => {
+    return headers.map(h => {
+      const val = row[h] ?? ''
+      return `"${String(val).replace(/"/g, '""')}"`
+    }).join(',')
+  })
+  return [headerRow, ...dataRows].join('\r\n')
+}
+
   /**
-   * Export survey responses to CSV file using PapaParse + UTF-8 BOM
+   * Export survey responses to CSV file using unparseCSV + UTF-8 BOM
    */
   async function exportToCSV(surveyId: string, surveyTitle = 'survei'): Promise<{ success: boolean; error: string | null }> {
     const { data, error } = await fetchDetailedResponses(surveyId)
@@ -635,10 +650,7 @@ export function useSurveyAnalytics() {
 
     try {
       const csvData = formatResponsesForCSV(data.questions, data.responses, data.sections)
-      const csvString = Papa.unparse(csvData, {
-        quotes: true,
-        header: true,
-      })
+      const csvString = unparseCSV(csvData)
 
       // Add UTF-8 BOM (\ufeff) for Excel compatibility (csv-generator.md requirement 2.1)
       const blob = new Blob(['\uFEFF' + csvString], { type: 'text/csv;charset=utf-8;' })
@@ -668,5 +680,6 @@ export function useSurveyAnalytics() {
     fetchDetailedResponses,
     formatResponsesForCSV,
     exportToCSV,
+    unparseCSV,
   }
 }

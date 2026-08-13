@@ -3,19 +3,13 @@
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
       <!-- Brand / Logo -->
       <NuxtLink to="/" class="flex items-center gap-2 font-bold text-xl text-gray-900 dark:text-white">
-        <span class="text-primary-600 dark:text-primary-400">⚡ Formly</span>
+        <span class="text-primary-600 dark:text-primary-400">📑 Formly</span>
       </NuxtLink>
 
       <!-- Auth State & Actions with ClientOnly wrapper to prevent hydration mismatch -->
       <div class="flex items-center gap-4">
         <ClientOnly>
           <template v-if="user">
-            <NuxtLink 
-              to="/admin/dashboard" 
-              class="text-sm font-medium text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white"
-            >
-              Dashboard
-            </NuxtLink>
             <div class="flex items-center gap-2">
               <span class="text-xs bg-gray-100 dark:bg-gray-800 px-2.5 py-1 rounded-full text-gray-700 dark:text-gray-300 font-mono">
                 {{ user.email }}
@@ -30,13 +24,6 @@
                 Logout
               </UButton>
             </div>
-          </template>
-          <template v-else-if="route.path !== '/admin/login'">
-            <NuxtLink to="/admin/login">
-              <UButton color="primary" size="sm">
-                Admin Login
-              </UButton>
-            </NuxtLink>
           </template>
         </ClientOnly>
       </div>

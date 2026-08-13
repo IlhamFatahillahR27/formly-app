@@ -69,9 +69,8 @@
               <div class="absolute -bottom-10 -right-10 w-28 h-28 bg-indigo-500/20 rounded-full blur-2xl pointer-events-none"></div>
 
               <!-- Brand Header -->
-              <div class="inline-flex items-center space-x-1.5 px-2.5 py-0.5 rounded-full bg-white/10 backdrop-blur-md border border-white/15 text-[10px] font-bold tracking-widest uppercase text-primary-300">
-                <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-                <span>Formly Interactive Survey</span>
+              <div class="inline-flex items-center space-x-1.5 px-2.5 py-1.5 rounded-full bg-white/10 backdrop-blur-md border border-white/15 text-[10px] font-bold tracking-widest text-primary-300">
+                <span><span class="font-bold">📑 Formly</span> | Interactive Survey</span>
               </div>
 
               <!-- Survey Title & Description -->
@@ -271,7 +270,7 @@ async function downloadQRCard() {
     ctx.fillStyle = '#a5b4fc' // Indigo 300
     ctx.font = 'bold 18px sans-serif'
     ctx.textAlign = 'center'
-    ctx.fillText('✨ FORMLY INTERACTIVE SURVEY', width / 2, 131)
+    ctx.fillText('📑 Formly | Interactive Survey', width / 2, 131)
 
     // 5. Draw Survey Title (Wrapped text)
     ctx.fillStyle = '#ffffff'

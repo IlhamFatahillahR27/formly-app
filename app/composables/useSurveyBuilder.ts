@@ -550,6 +550,39 @@ export function useSurveyBuilder() {
     }
   }
 
+  /**
+   * Update survey header metadata (title, description, cover_image_url)
+   */
+  async function updateSurveyHeader(updates: Partial<Pick<BuilderSurveyRow, 'title' | 'description' | 'cover_image_url'>>): Promise<boolean> {
+    if (!survey.value) return false
+    saving.value = true
+    try {
+      const { data, error: err } = await supabase
+        .from('surveys')
+        .update(updates)
+        .eq('id', survey.value.id)
+        .select()
+        .single()
+
+      if (err || !data) {
+        error.value = err?.message || 'Gagal mengupdate informasi survei.'
+        saving.value = false
+        return false
+      }
+
+      survey.value = {
+        ...survey.value,
+        ...data,
+      }
+      saving.value = false
+      return true
+    } catch (err: unknown) {
+      error.value = err instanceof Error ? err.message : 'Kesalahan mengupdate informasi survei.'
+      saving.value = false
+      return false
+    }
+  }
+
   return {
     survey,
     sections,
@@ -571,5 +604,6 @@ export function useSurveyBuilder() {
     updateLogicRule,
     deleteLogicRule,
     toggleSurveyStatus,
+    updateSurveyHeader,
   }
 }

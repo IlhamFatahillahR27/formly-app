@@ -15,6 +15,7 @@ export interface Database {
           admin_id: string
           title: string
           description: string | null
+          cover_image_url: string | null
           is_active: boolean
           start_section_id: string | null
           created_at: string
@@ -25,6 +26,7 @@ export interface Database {
           admin_id: string
           title: string
           description?: string | null
+          cover_image_url?: string | null
           is_active?: boolean
           start_section_id?: string | null
           created_at?: string
@@ -35,6 +37,7 @@ export interface Database {
           admin_id?: string
           title?: string
           description?: string | null
+          cover_image_url?: string | null
           is_active?: boolean
           start_section_id?: string | null
           created_at?: string

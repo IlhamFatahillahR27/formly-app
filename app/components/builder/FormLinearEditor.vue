@@ -1,5 +1,132 @@
 <template>
   <div class="space-y-6">
+    <!-- Survey Header & Cover Photo Settings Card -->
+    <div class="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm overflow-hidden">
+      <!-- Cover Banner Container (Facebook / LinkedIn Style) -->
+      <div v-if="survey?.cover_image_url" class="relative w-full h-44 sm:h-56 overflow-hidden bg-gray-100 dark:bg-gray-800 group">
+        <img
+          :src="survey.cover_image_url"
+          alt="Survey Sampul Header"
+          class="w-full h-full object-cover"
+        />
+        <!-- Overlay & Hover Actions -->
+        <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center space-x-3">
+          <UButton
+            color="neutral"
+            variant="solid"
+            icon="i-heroicons-arrow-path"
+            size="xs"
+            @click="triggerFileInput"
+          >
+            Ganti Sampul
+          </UButton>
+          <UButton
+            color="neutral"
+            variant="solid"
+            icon="i-heroicons-link"
+            size="xs"
+            @click="showUrlInput = !showUrlInput"
+          >
+            Input URL
+          </UButton>
+          <UButton
+            color="error"
+            variant="solid"
+            icon="i-heroicons-trash"
+            size="xs"
+            @click="handleRemoveCover"
+          >
+            Hapus Sampul
+          </UButton>
+        </div>
+      </div>
+
+      <!-- Cover Placeholder / Upload Dropzone when no cover image exists -->
+      <div v-else class="p-6 text-center border-b border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-800/30">
+        <div class="max-w-md mx-auto space-y-3">
+          <div class="w-10 h-10 rounded-full bg-primary-50 dark:bg-primary-950/50 text-primary-500 flex items-center justify-center mx-auto">
+            <UIcon name="i-heroicons-photo" class="w-5 h-5" />
+          </div>
+          <div>
+            <h4 class="text-xs font-semibold text-gray-700 dark:text-gray-300">Gambar Heading / Sampul Survei</h4>
+            <p class="text-2xs text-gray-500 mt-0.5">Tambahkan foto sampul bergaya Facebook/LinkedIn di atas judul survei Anda.</p>
+          </div>
+          <div class="flex items-center justify-center gap-2 pt-1">
+            <UButton
+              color="primary"
+              variant="soft"
+              icon="i-heroicons-cloud-arrow-up"
+              size="xs"
+              @click="triggerFileInput"
+            >
+              Upload Sampul
+            </UButton>
+            <UButton
+              color="neutral"
+              variant="ghost"
+              icon="i-heroicons-link"
+              size="xs"
+              @click="showUrlInput = !showUrlInput"
+            >
+              Gunakan URL Gambar
+            </UButton>
+          </div>
+        </div>
+      </div>
+
+      <!-- URL Input Bar -->
+      <div v-if="showUrlInput" class="p-3 bg-gray-100 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 flex items-center space-x-2">
+        <UInput
+          v-model="inputImageUrl"
+          placeholder="https://example.com/gambar-sampul.jpg"
+          size="xs"
+          class="flex-1"
+          @keyup.enter="handleApplyImageUrl"
+        />
+        <UButton color="primary" size="xs" @click="handleApplyImageUrl">Simpan URL</UButton>
+        <UButton color="neutral" variant="ghost" size="xs" @click="showUrlInput = false">Batal</UButton>
+      </div>
+
+      <!-- Hidden File Input for Image Upload -->
+      <input
+        ref="fileInputRef"
+        type="file"
+        accept="image/*"
+        class="hidden"
+        @change="handleFileUpload"
+      />
+
+      <!-- Title & Description Editor -->
+      <div class="p-5 space-y-4">
+        <div>
+          <label class="block text-2xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">
+            Judul Utama Survei
+          </label>
+          <UInput
+            :model-value="survey?.title || ''"
+            placeholder="Masukkan Judul Survei..."
+            size="md"
+            class="w-full font-bold text-gray-900 dark:text-white"
+            @change="(e: Event) => onSaveSurveyTitle((e.target as HTMLInputElement)?.value || '')"
+          />
+        </div>
+
+        <div>
+          <label class="block text-2xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">
+            Deskripsi Survei
+          </label>
+          <UTextarea
+            :model-value="survey?.description || ''"
+            placeholder="Masukkan deskripsi atau penjelasan survei..."
+            size="xs"
+            rows="2"
+            class="w-full"
+            @change="(e: Event) => onSaveSurveyDescription((e.target as HTMLTextAreaElement)?.value || '')"
+          />
+        </div>
+      </div>
+    </div>
+
     <div v-if="sections.length === 0" class="p-8 text-center border-2 border-dashed border-gray-300 dark:border-gray-800 rounded-xl bg-white dark:bg-gray-900">
       <UIcon name="i-heroicons-document-text" class="w-12 h-12 text-gray-400 mx-auto mb-2" />
       <h3 class="font-semibold text-gray-900 dark:text-white">Belum Ada Section</h3>
@@ -200,9 +327,11 @@
 </template>
 
 <script setup lang="ts">
+import { ref, computed } from 'vue'
 import { useSurveyBuilder, type SectionRow } from '~/composables/useSurveyBuilder'
 import QuestionEditor from '~/components/survey/QuestionEditor.vue'
 
+const toast = useToast()
 const {
   survey,
   sections,
@@ -213,9 +342,88 @@ const {
   deleteSection,
   setStartSection,
   createQuestion,
+  updateSurveyHeader,
 } = useSurveyBuilder()
 
+const fileInputRef = ref<HTMLInputElement | null>(null)
+const showUrlInput = ref(false)
+const inputImageUrl = ref('')
+
 const collapsedSections = ref<Record<string, boolean>>({})
+
+function triggerFileInput() {
+  fileInputRef.value?.click()
+}
+
+function handleFileUpload(event: Event) {
+  const target = event.target as HTMLInputElement
+  const file = target.files?.[0]
+  if (!file) return
+
+  if (file.size > 5 * 1024 * 1024) {
+    toast.add({
+      title: 'Ukuran File Terlalu Besar',
+      description: 'Maksimal ukuran file gambar sampul adalah 5MB.',
+      color: 'error',
+      icon: 'i-heroicons-exclamation-triangle',
+    })
+    return
+  }
+
+  const reader = new FileReader()
+  reader.onload = async (e) => {
+    const dataUrl = e.target?.result as string
+    if (dataUrl) {
+      const success = await updateSurveyHeader({ cover_image_url: dataUrl })
+      if (success) {
+        toast.add({
+          title: 'Sampul Diperbarui',
+          description: 'Gambar sampul survei berhasil diunggah.',
+          color: 'success',
+          icon: 'i-heroicons-check-circle',
+        })
+      }
+    }
+  }
+  reader.readAsDataURL(file)
+}
+
+async function handleApplyImageUrl() {
+  if (!inputImageUrl.value || !inputImageUrl.value.trim()) return
+  const success = await updateSurveyHeader({ cover_image_url: inputImageUrl.value.trim() })
+  if (success) {
+    toast.add({
+      title: 'Sampul Diperbarui',
+      description: 'URL gambar sampul berhasil diterapkan.',
+      color: 'success',
+      icon: 'i-heroicons-check-circle',
+    })
+    showUrlInput.value = false
+    inputImageUrl.value = ''
+  }
+}
+
+async function handleRemoveCover() {
+  const success = await updateSurveyHeader({ cover_image_url: null })
+  if (success) {
+    toast.add({
+      title: 'Sampul Dihapus',
+      description: 'Gambar sampul survei telah dihapus.',
+      color: 'info',
+      icon: 'i-heroicons-information-circle',
+    })
+  }
+}
+
+async function onSaveSurveyTitle(title: string) {
+  if (title && title.trim()) {
+    await updateSurveyHeader({ title: title.trim() })
+  }
+}
+
+async function onSaveSurveyDescription(description: string) {
+  await updateSurveyHeader({ description: description.trim() || null })
+}
 
 const allCollapsed = computed(() => {
   if (sections.value.length === 0) return false

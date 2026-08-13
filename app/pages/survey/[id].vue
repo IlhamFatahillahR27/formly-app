@@ -85,39 +85,50 @@
         <!-- Active Survey Execution Screen -->
         <div v-else-if="survey && currentSection" class="space-y-4 sm:space-y-6">
           <!-- Survey Metadata & Section Header -->
-          <div class="bg-white dark:bg-gray-900 rounded-2xl p-6 sm:p-8 border border-gray-200 dark:border-gray-800 shadow-sm space-y-4">
-            <div>
-              <div class="flex items-center justify-between">
-                <span class="text-xs font-semibold tracking-wider uppercase text-primary-600 dark:text-primary-400">
-                  {{ survey.title }}
-                </span>
-                <UBadge v-if="currentIterationCount > 1" color="warning" variant="soft" size="sm">
-                  Putaran Ke-{{ currentIterationCount }}
-                </UBadge>
-              </div>
-
-              <h1 class="text-2xl sm:text-3xl font-extrabold text-gray-900 dark:text-white mt-1">
-                {{ currentSection.title }}
-              </h1>
-              <p v-if="currentSection.description" class="text-sm text-gray-600 dark:text-gray-400 mt-2">
-                {{ currentSection.description }}
-              </p>
+          <div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm overflow-hidden">
+            <!-- Cover Banner (Facebook / LinkedIn Style) -->
+            <div v-if="survey.cover_image_url" class="relative w-full h-36 sm:h-48 md:h-56 overflow-hidden bg-gray-100 dark:bg-gray-800">
+              <img
+                :src="survey.cover_image_url"
+                alt="Survey Cover Header"
+                class="w-full h-full object-cover"
+              />
             </div>
 
-            <!-- Progress Bar -->
-            <div class="pt-2">
-              <div class="flex items-center justify-between text-xs text-gray-500 mb-1.5 font-medium">
-                <span>{{ stepLabel }}</span>
-                <span v-if="currentSection.is_end_section">Langkah Terakhir</span>
-                <span v-else-if="totalCategoryCount > 0 && completedCategories.length > 0" class="text-emerald-600 dark:text-emerald-400 font-semibold">
-                  {{ completedCategories.length }} / {{ totalCategoryCount }} Kategori Selesai
-                </span>
+            <div class="p-6 sm:p-8 space-y-4">
+              <div>
+                <div class="flex items-center justify-between">
+                  <span class="text-xs font-semibold tracking-wider uppercase text-primary-600 dark:text-primary-400">
+                    {{ survey.title }}
+                  </span>
+                  <UBadge v-if="currentIterationCount > 1" color="warning" variant="soft" size="sm">
+                    Putaran Ke-{{ currentIterationCount }}
+                  </UBadge>
+                </div>
+
+                <h1 class="text-2xl sm:text-3xl font-extrabold text-gray-900 dark:text-white mt-1">
+                  {{ currentSection.title }}
+                </h1>
+                <p v-if="currentSection.description" class="text-sm text-gray-600 dark:text-gray-400 mt-2">
+                  {{ currentSection.description }}
+                </p>
               </div>
-              <div class="w-full bg-gray-100 dark:bg-gray-800 h-2 rounded-full overflow-hidden">
-                <div
-                  class="bg-primary-500 h-full transition-all duration-300 rounded-full"
-                  :style="{ width: `${progressPercentage}%` }"
-                ></div>
+
+              <!-- Progress Bar -->
+              <div class="pt-2">
+                <div class="flex items-center justify-between text-xs text-gray-500 mb-1.5 font-medium">
+                  <span>{{ stepLabel }}</span>
+                  <span v-if="currentSection.is_end_section">Langkah Terakhir</span>
+                  <span v-else-if="totalCategoryCount > 0 && completedCategories.length > 0" class="text-emerald-600 dark:text-emerald-400 font-semibold">
+                    {{ completedCategories.length }} / {{ totalCategoryCount }} Kategori Selesai
+                  </span>
+                </div>
+                <div class="w-full bg-gray-100 dark:bg-gray-800 h-2 rounded-full overflow-hidden">
+                  <div
+                    class="bg-primary-500 h-full transition-all duration-300 rounded-full"
+                    :style="{ width: `${progressPercentage}%` }"
+                  ></div>
+                </div>
               </div>
             </div>
           </div>

@@ -1,8 +1,8 @@
 <template>
   <UCard class="border border-gray-200 dark:border-gray-800 shadow-sm transition-all hover:shadow-md">
     <template #header>
-      <div class="flex items-center justify-between">
-        <div class="flex items-center space-x-2 truncate">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-3">
+        <div class="flex items-center space-x-2 min-w-0 flex-1">
           <UButton
             size="xs"
             color="secondary"
@@ -10,15 +10,15 @@
             :icon="isCollapsed ? 'i-heroicons-chevron-right' : 'i-heroicons-chevron-down'"
             @click="isCollapsed = !isCollapsed"
           />
-          <UBadge color="primary" variant="soft" size="sm">
+          <UBadge color="primary" variant="soft" size="sm" class="shrink-0">
             Pertanyaan #{{ index + 1 }}
           </UBadge>
-          <span class="text-xs font-semibold text-gray-800 dark:text-gray-200 truncate max-w-xs">
+          <span class="text-xs font-semibold text-gray-800 dark:text-gray-200 truncate min-w-0 flex-1">
             {{ questionText || 'Pertanyaan Tanpa Judul' }}
           </span>
         </div>
 
-        <div class="flex items-center space-x-2 shrink-0">
+        <div class="flex items-center justify-between sm:justify-end gap-1.5 shrink-0 w-full sm:w-auto pt-1 sm:pt-0 border-t sm:border-t-0 border-gray-100 dark:border-gray-800">
           <!-- Question Reorder Controls -->
           <div class="flex items-center space-x-0.5 bg-gray-100 dark:bg-gray-800 px-1 py-0.5 rounded-lg border border-gray-200 dark:border-gray-700">
             <UButton
@@ -117,11 +117,11 @@
 
       <!-- Multiple Choice Options Manager -->
       <div v-if="question.type === 'multiple_choice'" class="p-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg space-y-2">
-        <div class="flex items-center justify-between">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
           <span class="text-xs font-medium text-gray-700 dark:text-gray-300">
             Daftar Opsi Jawaban
           </span>
-          <div class="flex items-center space-x-2">
+          <div class="flex items-center space-x-2 shrink-0">
             <UButton
               v-if="optionsList.length > 0"
               size="xs"
@@ -151,17 +151,19 @@
         <div
           v-for="(opt, oIdx) in optionsList"
           :key="opt.id"
-          class="flex items-center space-x-2"
+          class="flex items-center space-x-2 min-w-0"
         >
-          <span class="text-2xs text-gray-400 font-mono w-6">{{ oIdx + 1 }}.</span>
-          <UInput
-            v-model="opt.text"
-            placeholder="Nama opsi..."
-            size="xs"
-            class="flex-1"
-            @blur="saveOptions"
-          />
-          <div class="flex items-center space-x-0.5">
+          <span class="text-2xs text-gray-400 font-mono w-6 shrink-0">{{ oIdx + 1 }}.</span>
+          <div class="flex-1 min-w-0">
+            <UInput
+              v-model="opt.text"
+              placeholder="Nama opsi..."
+              size="xs"
+              class="w-full"
+              @blur="saveOptions"
+            />
+          </div>
+          <div class="flex items-center space-x-0.5 shrink-0">
             <UButton
               size="xs"
               color="neutral"
@@ -186,6 +188,7 @@
             color="error"
             variant="ghost"
             icon="i-heroicons-x-mark"
+            class="shrink-0"
             @click="removeOption(opt.id)"
           />
         </div>
@@ -193,12 +196,12 @@
 
       <!-- Rating Configuration & Live Star Preview -->
       <div v-if="question.type === 'rating'" class="p-3 bg-amber-50/50 dark:bg-amber-950/20 border border-amber-200/60 dark:border-amber-900/40 rounded-lg space-y-3">
-        <div class="flex items-center justify-between">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
           <span class="text-xs font-semibold text-gray-800 dark:text-gray-200 flex items-center">
-            <UIcon name="i-heroicons-star-solid" class="w-4 h-4 mr-1.5 text-amber-500" />
+            <UIcon name="i-heroicons-star-solid" class="w-4 h-4 mr-1.5 text-amber-500 shrink-0" />
             Pengaturan Skala Rating
           </span>
-          <div class="flex items-center space-x-2">
+          <div class="flex items-center space-x-2 shrink-0">
             <label class="text-2xs text-gray-600 dark:text-gray-400 font-medium">Batas Maksimal Bintang (1-10):</label>
             <select
               :value="maxRating"
@@ -236,7 +239,7 @@
       <div class="border-t border-gray-100 dark:border-gray-800 pt-3">
         <div class="flex items-center justify-between mb-2">
           <span class="text-xs font-semibold text-gray-700 dark:text-gray-300 flex items-center">
-            <UIcon name="i-heroicons-variable" class="w-3.5 h-3.5 mr-1 text-emerald-500" />
+            <UIcon name="i-heroicons-variable" class="w-3.5 h-3.5 mr-1 text-emerald-500 shrink-0" />
             Aturan Logic Branching ({{ existingRules.length }})
           </span>
           <UButton
@@ -258,14 +261,14 @@
             :key="rule.id"
             class="flex items-center justify-between p-2 rounded bg-emerald-50/50 dark:bg-emerald-950/20 border border-emerald-200/50 dark:border-emerald-800/40 text-2xs"
           >
-            <div class="flex items-center space-x-1 text-gray-700 dark:text-gray-300">
+            <div class="flex flex-wrap items-center gap-1 text-gray-700 dark:text-gray-300 min-w-0 flex-1 mr-2">
               <span class="font-medium">JIKA</span>
               <UBadge size="sm" color="info" variant="outline">{{ rule.operator }}</UBadge>
-              <span v-if="rule.condition_value" class="font-bold text-emerald-600 dark:text-emerald-400">
+              <span v-if="rule.condition_value" class="font-bold text-emerald-600 dark:text-emerald-400 break-all">
                 "{{ rule.condition_value }}"
               </span>
               <span>LANJUT KE &rarr;</span>
-              <span class="font-bold underline">{{ getSectionTitle(rule.target_section_id) }}</span>
+              <span class="font-bold underline break-words">{{ getSectionTitle(rule.target_section_id) }}</span>
             </div>
 
             <UButton
@@ -273,6 +276,7 @@
               color="error"
               variant="ghost"
               icon="i-heroicons-trash"
+              class="shrink-0"
               @click="deleteRule(rule.id)"
             />
           </div>
@@ -280,7 +284,7 @@
 
         <!-- Add Rule Form -->
         <div v-if="isAddingRule" class="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 space-y-2 text-2xs">
-          <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+          <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
             <div>
               <label class="block text-2xs text-gray-500 mb-1">Operator</label>
               <select

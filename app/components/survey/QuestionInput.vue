@@ -2,7 +2,7 @@
   <div class="space-y-2 p-4 sm:p-5 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm transition-all">
     <!-- Question Header -->
     <div class="flex items-start justify-between gap-2">
-      <h3 class="text-base sm:text-lg font-medium text-gray-900 dark:text-white leading-snug">
+      <h3 class="text-base sm:text-lg font-medium text-gray-900 dark:text-white leading-snug min-w-0 flex-1 break-words">
         {{ question.question_text || 'Pertanyaan Tanpa Judul' }}
         <span v-if="question.is_required" class="text-red-500 ml-0.5" title="Wajib diisi">*</span>
       </h3>
@@ -40,7 +40,7 @@
 
       <!-- 3. Multiple Choice -->
       <div v-else-if="question.type === 'multiple_choice'" class="space-y-2">
-        <div class="grid grid-cols-1 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-1 gap-2 sm:gap-2.5">
+        <div class="grid grid-cols-1 gap-2 sm:gap-2.5">
           <div
             v-for="(option, idx) in availableOptions"
             :key="option.id || idx"
@@ -58,7 +58,7 @@
               :checked="isOptionSelected(option)"
               class="h-4 w-4 aspect-square text-primary-600 focus:ring-primary-500 border-gray-300 cursor-pointer pointer-events-none shrink-0"
             />
-            <span class="ml-3 text-sm font-medium text-gray-800 dark:text-gray-200">
+            <span class="ml-3 text-sm font-medium text-gray-800 dark:text-gray-200 break-words min-w-0 flex-1">
               {{ option.text }}
             </span>
           </div>
@@ -72,32 +72,34 @@
       <!-- 4. Rating (Google Reviews Style) -->
       <div v-else-if="question.type === 'rating'" class="space-y-2 pt-1">
         <div
-          class="flex flex-wrap items-center gap-1 sm:gap-1.5 select-none"
+          class="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 select-none"
           @mouseleave="hoverRating = null"
         >
-          <button
-            v-for="star in maxStars"
-            :key="star"
-            type="button"
-            class="w-8 h-8 sm:w-9 sm:h-9 aspect-square p-1 sm:p-1.5 focus:outline-none transition-transform duration-150 transform hover:scale-125 active:scale-95 cursor-pointer flex items-center justify-center"
-            @mouseenter="hoverRating = star"
-            @click="selectRating(star)"
-          >
-            <svg
-              class="w-full h-full aspect-square transition-colors duration-150 drop-shadow-xs"
-              :class="[
-                star <= (hoverRating ?? Number(modelValue) ?? 0)
-                  ? 'text-amber-400 fill-amber-400'
-                  : 'text-gray-300 dark:text-gray-700 fill-gray-200 dark:fill-gray-800'
-              ]"
-              viewBox="0 0 24 24"
+          <div class="flex flex-wrap items-center gap-1 sm:gap-1.5">
+            <button
+              v-for="star in maxStars"
+              :key="star"
+              type="button"
+              class="w-8 h-8 sm:w-9 sm:h-9 aspect-square p-1 sm:p-1.5 focus:outline-none transition-transform duration-150 transform hover:scale-125 active:scale-95 cursor-pointer flex items-center justify-center touch-manipulation"
+              @mouseenter="hoverRating = star"
+              @click="selectRating(star)"
             >
-              <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/>
-            </svg>
-          </button>
+              <svg
+                class="w-full h-full aspect-square transition-colors duration-150 drop-shadow-xs"
+                :class="[
+                  star <= (hoverRating ?? Number(modelValue) ?? 0)
+                    ? 'text-amber-400 fill-amber-400'
+                    : 'text-gray-300 dark:text-gray-700 fill-gray-200 dark:fill-gray-800'
+                ]"
+                viewBox="0 0 24 24"
+              >
+                <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/>
+              </svg>
+            </button>
+          </div>
 
           <!-- Selected Rating Indicator / Score Badge -->
-          <div class="ml-2 flex items-center space-x-1">
+          <div class="flex items-center space-x-1 shrink-0">
             <span v-if="modelValue" class="text-xs sm:text-sm font-bold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/50 px-2.5 py-1 rounded-full border border-amber-200 dark:border-amber-900/50">
               {{ modelValue }} / {{ maxStars }} Bintang
             </span>

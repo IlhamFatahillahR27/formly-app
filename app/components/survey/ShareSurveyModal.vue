@@ -132,6 +132,7 @@
 <script setup lang="ts">
 import { ref, computed, watch, nextTick } from 'vue'
 import QRCode from 'qrcode'
+import { useDemoMode } from '~/composables/useDemoMode'
 
 export interface ShareSurveyModalProps {
   open: boolean
@@ -154,6 +155,8 @@ const isOpen = computed({
   set: (val) => emit('update:open', val),
 })
 
+const { isDemo } = useDemoMode()
+
 const qrCanvasRef = ref<HTMLCanvasElement | null>(null)
 const exportCanvas = ref<HTMLCanvasElement | null>(null)
 
@@ -163,10 +166,12 @@ const toast = useToast?.()
 
 const surveyUrl = computed(() => {
   if (!props.survey?.id) return ''
+  const isDemoTarget = isDemo.value || props.survey.id.startsWith('demo-')
+  const query = isDemoTarget ? '?demo=true' : ''
   if (typeof window !== 'undefined') {
-    return `${window.location.origin}/survey/${props.survey.id}`
+    return `${window.location.origin}/survey/${props.survey.id}${query}`
   }
-  return `/survey/${props.survey.id}`
+  return `/survey/${props.survey.id}${query}`
 })
 
 // Generate QR Code on screen canvas

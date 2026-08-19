@@ -9,6 +9,7 @@
       <!-- Auth State & Actions with ClientOnly wrapper to prevent hydration mismatch -->
       <div class="flex items-center gap-4">
         <ClientOnly>
+          <!-- Logged in Admin -->
           <template v-if="user">
             <div class="flex items-center gap-2">
               <span class="text-xs bg-gray-100 dark:bg-gray-800 px-2.5 py-1 rounded-full text-gray-700 dark:text-gray-300 font-mono">
@@ -25,6 +26,24 @@
               </UButton>
             </div>
           </template>
+
+          <!-- Guest in Demo Mode -->
+          <template v-else-if="isDemo">
+            <div class="flex items-center gap-2">
+              <UBadge color="warning" variant="subtle" size="sm">
+                Demo Mode (Guest)
+              </UBadge>
+              <UButton
+                color="neutral"
+                variant="soft"
+                size="xs"
+                icon="i-heroicons-arrow-right-on-rectangle"
+                @click="handleExitDemo"
+              >
+                Keluar Demo
+              </UButton>
+            </div>
+          </template>
         </ClientOnly>
       </div>
     </div>
@@ -32,13 +51,20 @@
 </template>
 
 <script setup lang="ts">
+import { ref } from 'vue'
+import { useDemoMode } from '~/composables/useDemoMode'
+
 const user = useSupabaseUser()
 const supabase = useSupabaseClient()
-const route = useRoute()
 const router = useRouter()
 const toast = useToast?.()
+const { isDemo, exitDemo } = useDemoMode()
 
 const isLoggingOut = ref(false)
+
+async function handleExitDemo() {
+  await exitDemo('/')
+}
 
 async function handleLogout() {
   isLoggingOut.value = true

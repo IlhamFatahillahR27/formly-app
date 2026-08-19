@@ -1,11 +1,12 @@
+import { computed } from 'vue'
 import type { Database, Json, SurveyRow, SectionRow, QuestionRow, SectionLogicRow } from '~/types/supabase'
+import { useDemoState } from '~/composables/useDemoState'
 
 export type BuilderSurveyRow = SurveyRow
 export type { SectionRow, QuestionRow, SectionLogicRow }
 
 export type QuestionType = 'short_text' | 'long_text' | 'multiple_choice' | 'rating'
 export type LogicOperator = 'selected' | 'filled' | 'equals' | 'not_equals' | 'greater_than' | 'less_than'
-
 
 export interface QuestionOption {
   id: string
@@ -15,17 +16,30 @@ export interface QuestionOption {
 // Debounce timer store per section ID
 const positionDebounceTimers: Record<string, ReturnType<typeof setTimeout>> = {}
 
+function safeState<T>(key: string, init: () => T) {
+  if (typeof useState === 'function') {
+    return useState<T>(key, init)
+  }
+  return ref<T>(init())
+}
+
 export function useSurveyBuilder() {
   const supabase = useSupabaseClient<Database>()
+  const route = typeof useRoute === 'function' ? useRoute() : null
+  const demoState = useDemoState()
 
-  const survey = useState<BuilderSurveyRow | null>('builder_survey', () => null)
-  const sections = useState<SectionRow[]>('builder_sections', () => [])
-  const questions = useState<QuestionRow[]>('builder_questions', () => [])
-  const logicRules = useState<SectionLogicRow[]>('builder_logic_rules', () => [])
+  const isDemo = computed(() => {
+    return route?.query?.demo === 'true' || route?.query?.demo === '1' || (survey.value?.id ? survey.value.id.startsWith('demo-') : false)
+  })
 
-  const loading = useState<boolean>('builder_loading', () => false)
-  const saving = useState<boolean>('builder_saving', () => false)
-  const error = useState<string | null>('builder_error', () => null)
+  const survey = safeState<BuilderSurveyRow | null>('builder_survey', () => null)
+  const sections = safeState<SectionRow[]>('builder_sections', () => [])
+  const questions = safeState<QuestionRow[]>('builder_questions', () => [])
+  const logicRules = safeState<SectionLogicRow[]>('builder_logic_rules', () => [])
+
+  const loading = safeState<boolean>('builder_loading', () => false)
+  const saving = safeState<boolean>('builder_saving', () => false)
+  const error = safeState<string | null>('builder_error', () => null)
 
   /**
    * Load entire survey structure (Survey, Sections, Questions, Section Logic)
@@ -38,6 +52,26 @@ export function useSurveyBuilder() {
 
     loading.value = true
     error.value = null
+
+    // Check if in demo mode or loading demo survey
+    const isDemoSurvey = surveyId.startsWith('demo-') || route?.query?.demo === 'true' || route?.query?.demo === '1'
+
+    if (isDemoSurvey) {
+      const demoSurv = demoState.getSurveyById(surveyId)
+      if (!demoSurv) {
+        error.value = 'Survei demo tidak ditemukan.'
+        loading.value = false
+        return false
+      }
+
+      survey.value = demoSurv
+      sections.value = demoState.getSections(surveyId)
+      questions.value = demoState.getQuestions(surveyId)
+      logicRules.value = demoState.getLogicRules(surveyId)
+
+      loading.value = false
+      return true
+    }
 
     try {
       // 1. Fetch survey header
@@ -123,6 +157,11 @@ export function useSurveyBuilder() {
       }
     }
 
+    if (isDemo.value || survey.value?.id.startsWith('demo-')) {
+      demoState.updateNodePosition(sectionId, position_x, position_y)
+      return
+    }
+
     if (positionDebounceTimers[sectionId]) {
       clearTimeout(positionDebounceTimers[sectionId])
     }
@@ -156,6 +195,18 @@ export function useSurveyBuilder() {
       defaultTitle = titleOrPayload.trim()
     } else if (typeof titleOrPayload === 'object' && titleOrPayload !== null && 'title' in titleOrPayload && typeof titleOrPayload.title === 'string' && titleOrPayload.title.trim()) {
       defaultTitle = titleOrPayload.title.trim()
+    }
+
+    if (isDemo.value || survey.value.id.startsWith('demo-')) {
+      const newSec = demoState.createSection(survey.value.id, defaultTitle)
+      if (newSec) {
+        sections.value.push(newSec)
+        if (!survey.value.start_section_id) {
+          survey.value.start_section_id = newSec.id
+        }
+      }
+      saving.value = false
+      return newSec
     }
 
     try {
@@ -200,6 +251,21 @@ export function useSurveyBuilder() {
     updates: Partial<Omit<SectionRow, 'id' | 'survey_id' | 'created_at' | 'updated_at'>>
   ): Promise<boolean> {
     saving.value = true
+
+    if (isDemo.value || survey.value?.id.startsWith('demo-')) {
+      const updated = demoState.updateSection(sectionId, updates)
+      if (updated) {
+        const idx = sections.value.findIndex((s) => s.id === sectionId)
+        if (idx !== -1) {
+          sections.value[idx] = updated
+        }
+        saving.value = false
+        return true
+      }
+      saving.value = false
+      return false
+    }
+
     try {
       const { data, error: err } = await supabase
         .from('sections')
@@ -233,6 +299,23 @@ export function useSurveyBuilder() {
    */
   async function deleteSection(sectionId: string): Promise<boolean> {
     saving.value = true
+
+    if (isDemo.value || survey.value?.id.startsWith('demo-')) {
+      demoState.deleteSection(sectionId)
+      sections.value = sections.value.filter((s) => s.id !== sectionId)
+      questions.value = questions.value.filter((q) => q.section_id !== sectionId)
+      logicRules.value = logicRules.value.filter(
+        (l) => l.source_section_id !== sectionId && l.target_section_id !== sectionId
+      )
+
+      if (survey.value?.start_section_id === sectionId) {
+        const nextStart = sections.value[0]?.id || null
+        if (survey.value) survey.value.start_section_id = nextStart
+      }
+      saving.value = false
+      return true
+    }
+
     try {
       const { error: err } = await supabase
         .from('sections')
@@ -272,6 +355,13 @@ export function useSurveyBuilder() {
     if (!survey.value) return false
     saving.value = true
 
+    if (isDemo.value || survey.value.id.startsWith('demo-')) {
+      demoState.updateSurveyHeader(survey.value.id, { start_section_id: sectionId })
+      survey.value.start_section_id = sectionId
+      saving.value = false
+      return true
+    }
+
     try {
       const { error: err } = await supabase
         .from('surveys')
@@ -302,6 +392,7 @@ export function useSurveyBuilder() {
     typeOrPayload: QuestionType | { question_text?: string; type?: QuestionType } = 'short_text'
   ): Promise<QuestionRow | null> {
     saving.value = true
+
     const sectionQuestions = questions.value.filter((q) => q.section_id === sectionId)
     const newIndex = sectionQuestions.length
 
@@ -313,6 +404,16 @@ export function useSurveyBuilder() {
     } else if (typeof typeOrPayload === 'object' && typeOrPayload !== null) {
       if (typeOrPayload.type) type = typeOrPayload.type
       if (typeOrPayload.question_text) questionText = typeOrPayload.question_text
+    }
+
+    if (isDemo.value || (survey.value?.id ? survey.value.id.startsWith('demo-') : false)) {
+      const sId = survey.value?.id || 'demo-survey-1'
+      const newQ = demoState.createQuestion(sId, sectionId, { question_text: questionText, type })
+      if (newQ) {
+        questions.value.push(newQ)
+      }
+      saving.value = false
+      return newQ
     }
 
     let defaultOptions: Json | null = null
@@ -363,6 +464,21 @@ export function useSurveyBuilder() {
     updates: Partial<Omit<QuestionRow, 'id' | 'section_id' | 'created_at' | 'updated_at'>>
   ): Promise<boolean> {
     saving.value = true
+
+    if (isDemo.value || survey.value?.id.startsWith('demo-')) {
+      const updated = demoState.updateQuestion(questionId, updates)
+      if (updated) {
+        const idx = questions.value.findIndex((q) => q.id === questionId)
+        if (idx !== -1) {
+          questions.value[idx] = updated
+        }
+        saving.value = false
+        return true
+      }
+      saving.value = false
+      return false
+    }
+
     try {
       const { data, error: err } = await supabase
         .from('questions')
@@ -396,6 +512,15 @@ export function useSurveyBuilder() {
    */
   async function deleteQuestion(questionId: string): Promise<boolean> {
     saving.value = true
+
+    if (isDemo.value || survey.value?.id.startsWith('demo-')) {
+      demoState.deleteQuestion(questionId)
+      questions.value = questions.value.filter((q) => q.id !== questionId)
+      logicRules.value = logicRules.value.filter((l) => l.question_id !== questionId)
+      saving.value = false
+      return true
+    }
+
     try {
       const { error: err } = await supabase
         .from('questions')
@@ -428,6 +553,21 @@ export function useSurveyBuilder() {
   ): Promise<SectionLogicRow | null> {
     if (!survey.value) return null
     saving.value = true
+
+    if (isDemo.value || survey.value.id.startsWith('demo-')) {
+      const newRule = demoState.createLogicRule(survey.value.id, {
+        source_section_id: payload.source_section_id,
+        question_id: payload.question_id,
+        operator: payload.operator,
+        condition_value: payload.condition_value ?? null,
+        target_section_id: payload.target_section_id,
+      })
+      if (newRule) {
+        logicRules.value.push(newRule)
+      }
+      saving.value = false
+      return newRule
+    }
 
     try {
       const { data, error: err } = await supabase
@@ -464,6 +604,14 @@ export function useSurveyBuilder() {
    */
   async function deleteLogicRule(ruleId: string): Promise<boolean> {
     saving.value = true
+
+    if (isDemo.value || survey.value?.id.startsWith('demo-')) {
+      demoState.deleteLogicRule(ruleId)
+      logicRules.value = logicRules.value.filter((l) => l.id !== ruleId)
+      saving.value = false
+      return true
+    }
+
     try {
       const { error: err } = await supabase
         .from('section_logic')
@@ -494,6 +642,21 @@ export function useSurveyBuilder() {
     updates: Partial<Omit<SectionLogicRow, 'id' | 'survey_id' | 'created_at' | 'updated_at'>>
   ): Promise<boolean> {
     saving.value = true
+
+    if (isDemo.value || survey.value?.id.startsWith('demo-')) {
+      const updated = demoState.updateLogicRule(ruleId, updates)
+      if (updated) {
+        const idx = logicRules.value.findIndex((l) => l.id === ruleId)
+        if (idx !== -1) {
+          logicRules.value[idx] = updated
+        }
+        saving.value = false
+        return true
+      }
+      saving.value = false
+      return false
+    }
+
     try {
       const { data, error: err } = await supabase
         .from('section_logic')
@@ -528,6 +691,14 @@ export function useSurveyBuilder() {
   async function toggleSurveyStatus(isActive: boolean): Promise<boolean> {
     if (!survey.value) return false
     saving.value = true
+
+    if (isDemo.value || survey.value.id.startsWith('demo-')) {
+      demoState.toggleSurveyStatus(survey.value.id, isActive)
+      survey.value.is_active = isActive
+      saving.value = false
+      return true
+    }
+
     try {
       const { error: err } = await supabase
         .from('surveys')
@@ -556,6 +727,17 @@ export function useSurveyBuilder() {
   async function updateSurveyHeader(updates: Partial<Pick<BuilderSurveyRow, 'title' | 'description' | 'cover_image_url'>>): Promise<boolean> {
     if (!survey.value) return false
     saving.value = true
+
+    if (isDemo.value || survey.value.id.startsWith('demo-')) {
+      demoState.updateSurveyHeader(survey.value.id, updates)
+      survey.value = {
+        ...survey.value,
+        ...updates,
+      }
+      saving.value = false
+      return true
+    }
+
     try {
       const { data, error: err } = await supabase
         .from('surveys')
@@ -587,6 +769,17 @@ export function useSurveyBuilder() {
    * Move Section up or down in order
    */
   async function moveSection(sectionId: string, direction: 'up' | 'down'): Promise<boolean> {
+    if (isDemo.value || survey.value?.id.startsWith('demo-')) {
+      if (survey.value) {
+        const success = demoState.moveSection(survey.value.id, sectionId, direction)
+        if (success) {
+          sections.value = demoState.getSections(survey.value.id)
+          return true
+        }
+      }
+      return false
+    }
+
     const sorted = [...sections.value].sort((a, b) => (a.order_index ?? 0) - (b.order_index ?? 0))
     const idx = sorted.findIndex((s) => s.id === sectionId)
     if (idx === -1) return false
@@ -631,6 +824,15 @@ export function useSurveyBuilder() {
    * Move Question up or down in order within its section
    */
   async function moveQuestion(questionId: string, direction: 'up' | 'down'): Promise<boolean> {
+    if (isDemo.value || survey.value?.id.startsWith('demo-')) {
+      const success = demoState.moveQuestion(questionId, direction)
+      if (success && survey.value) {
+        questions.value = demoState.getQuestions(survey.value.id)
+        return true
+      }
+      return false
+    }
+
     const qIndex = questions.value.findIndex((q) => q.id === questionId)
     if (qIndex === -1) return false
     const currentQ = questions.value[qIndex]

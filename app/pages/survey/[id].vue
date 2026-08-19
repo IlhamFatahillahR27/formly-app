@@ -1,6 +1,6 @@
 <template>
   <div class="min-h-screen bg-gray-50 dark:bg-gray-950 flex flex-col font-sans antialiased text-gray-900 dark:text-gray-100">
-    <!-- Floating Preview Banner -->
+    <!-- Floating Preview Banner (Only for non-demo preview) -->
     <ClientOnly>
       <PreviewBanner />
     </ClientOnly>
@@ -77,8 +77,8 @@
               Respon Anda telah berhasil dikirim untuk survei <strong>{{ survey?.title }}</strong>.
             </p>
           </div>
-          <div v-if="isPreview" class="p-4 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 rounded-xl text-xs text-amber-800 dark:text-amber-200">
-            ✨ Ini adalah simulasi sukses Mode Preview. Tidak ada data yang tersimpan di Supabase.
+          <div v-if="isPreview || isDemo" class="p-4 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 rounded-xl text-xs text-amber-800 dark:text-amber-200">
+            ✨ Ini adalah simulasi sukses Mode {{ isDemo ? 'Demo' : 'Preview' }}. Tidak ada data yang tersimpan di database Supabase.
           </div>
         </div>
 
@@ -218,6 +218,7 @@ import PreviewBanner from '~/components/survey/PreviewBanner.vue'
 const route = useRoute()
 const surveyId = computed(() => String(route.params.id || ''))
 const isPreview = computed(() => route.query.preview === 'true')
+const isDemo = computed(() => route.query.demo === 'true' || route.query.demo === '1')
 
 const {
   survey,
@@ -242,10 +243,10 @@ const {
 } = useSurveyRunner()
 
 watch(
-  [surveyId, isPreview],
-  async ([newId, newPreview]) => {
+  [surveyId, isPreview, isDemo],
+  async ([newId, newPreview, newDemo]) => {
     if (newId && typeof window !== 'undefined') {
-      await loadSurveyAndSections(newId, newPreview)
+      await loadSurveyAndSections(newId, newPreview || newDemo)
     }
   },
   { immediate: true }
@@ -253,12 +254,12 @@ watch(
 
 onMounted(async () => {
   if (surveyId.value) {
-    await loadSurveyAndSections(surveyId.value, isPreview.value)
+    await loadSurveyAndSections(surveyId.value, isPreview.value || isDemo.value)
   }
 })
 
 const isInactive = computed(() => {
-  if (isPreview.value) return false
+  if (isPreview.value || isDemo.value) return false
   if (errorMessage.value && errorMessage.value.toLowerCase().includes('tidak aktif')) return true
   if (survey.value && !survey.value.is_active) return true
   return false

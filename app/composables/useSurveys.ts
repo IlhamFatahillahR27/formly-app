@@ -1,4 +1,6 @@
+import { computed } from 'vue'
 import type { Database, SurveyRow } from '~/types/supabase'
+import { useDemoState } from '~/composables/useDemoState'
 
 export type SurveyWithStats = SurveyRow & {
   sections?: { count: number }[]
@@ -7,10 +9,15 @@ export type SurveyWithStats = SurveyRow & {
   response_count?: number
 }
 
-
 export function useSurveys() {
   const supabase = useSupabaseClient<Database>()
   const user = useSupabaseUser()
+  const route = typeof useRoute === 'function' ? useRoute() : null
+  const demoState = useDemoState()
+
+  const isDemo = computed(() => {
+    return route?.query?.demo === 'true' || route?.query?.demo === '1'
+  })
 
   /**
    * Helper to retrieve active user ID from composable state or active Supabase session
@@ -29,9 +36,13 @@ export function useSurveys() {
   }
 
   /**
-   * Fetch list of surveys created by the logged-in admin
+   * Fetch list of surveys created by the logged-in admin or demo surveys
    */
   async function fetchSurveys(): Promise<{ surveys: SurveyWithStats[]; error: string | null }> {
+    if (isDemo.value) {
+      return { surveys: demoState.getSurveys(), error: null }
+    }
+
     const userId = await getActiveUserId()
 
     if (!userId) {
@@ -80,14 +91,19 @@ export function useSurveys() {
     title: string
     description?: string
   }): Promise<{ survey: SurveyRow | null; error: string | null }> {
+    if (!payload.title || !payload.title.trim()) {
+      return { survey: null, error: 'Judul survei wajib diisi.' }
+    }
+
+    if (isDemo.value) {
+      const newDemoSurvey = demoState.createSurvey(payload)
+      return { survey: newDemoSurvey, error: null }
+    }
+
     const userId = await getActiveUserId()
 
     if (!userId) {
       return { survey: null, error: 'User tidak terautentikasi.' }
-    }
-
-    if (!payload.title || !payload.title.trim()) {
-      return { survey: null, error: 'Judul survei wajib diisi.' }
     }
 
     try {
@@ -155,6 +171,11 @@ export function useSurveys() {
       return { success: false, error: 'ID survei tidak valid.' }
     }
 
+    if (isDemo.value || surveyId.startsWith('demo-')) {
+      const success = demoState.toggleSurveyStatus(surveyId, isActive)
+      return { success, error: success ? null : 'Gagal memperbarui status survei demo.' }
+    }
+
     try {
       const { error } = await supabase
         .from('surveys')
@@ -178,6 +199,11 @@ export function useSurveys() {
   async function deleteSurvey(surveyId: string): Promise<{ success: boolean; error: string | null }> {
     if (!surveyId) {
       return { success: false, error: 'ID survei tidak valid.' }
+    }
+
+    if (isDemo.value || surveyId.startsWith('demo-')) {
+      const success = demoState.deleteSurvey(surveyId)
+      return { success, error: success ? null : 'Gagal menghapus survei demo.' }
     }
 
     try {

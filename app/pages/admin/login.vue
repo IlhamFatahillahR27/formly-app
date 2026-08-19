@@ -61,10 +61,13 @@
 </template>
 
 <script setup lang="ts">
+import { useDemoState } from '~/composables/useDemoState'
+
 const user = useSupabaseUser()
 const supabase = useSupabaseClient()
 const router = useRouter()
 const toast = useToast?.()
+const demoState = useDemoState()
 
 const email = ref('')
 const password = ref('')
@@ -74,12 +77,14 @@ const errorMessage = ref('')
 // Auto-redirect if already logged in
 onMounted(() => {
   if (user.value) {
+    demoState.clearDemoState()
     router.push('/admin/dashboard')
   }
 })
 
 watch(user, (newUser) => {
   if (newUser) {
+    demoState.clearDemoState()
     router.push('/admin/dashboard')
   }
 })
@@ -113,6 +118,9 @@ async function handleLogin() {
         })
       }
     } else if (data.user) {
+      // Clear in-memory demo state upon logging in
+      demoState.clearDemoState()
+
       if (toast) {
         toast.add({
           title: 'Login Berhasil',

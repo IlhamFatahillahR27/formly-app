@@ -4,7 +4,7 @@
     <div class="flex flex-wrap items-center justify-between border-b border-gray-200 dark:border-gray-800 pb-5 gap-4">
       <div>
         <NuxtLink
-          to="/admin/dashboard"
+          :to="withDemoQuery('/admin/dashboard')"
           class="inline-flex items-center text-xs text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 mb-2 transition-colors"
         >
           <UIcon name="i-heroicons-arrow-left" class="w-4 h-4 mr-1" />
@@ -164,6 +164,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useSurveyBuilder } from '~/composables/useSurveyBuilder'
+import { useDemoMode } from '~/composables/useDemoMode'
 import FormLinearEditor from '~/components/builder/FormLinearEditor.vue'
 import CanvasFlowDesigner from '~/components/builder/CanvasFlowDesigner.vue'
 import ShareSurveyModal from '~/components/survey/ShareSurveyModal.vue'
@@ -175,6 +176,7 @@ definePageMeta({
 const route = useRoute()
 const toast = useToast()
 const surveyId = computed(() => String(route.params.id))
+const { isDemo, withDemoQuery } = useDemoMode()
 
 const { survey, loading, saving, error, loadSurveyData, toggleSurveyStatus } = useSurveyBuilder()
 
@@ -217,6 +219,8 @@ function onManualSave() {
 
 function openPreview() {
   if (!surveyId.value) return
-  window.open(`/survey/${surveyId.value}?preview=true`, '_blank')
+  const isDemoTarget = isDemo.value || surveyId.value.startsWith('demo-')
+  const query = isDemoTarget ? '?preview=true&demo=true' : '?preview=true'
+  window.open(`/survey/${surveyId.value}${query}`, '_blank')
 }
 </script>

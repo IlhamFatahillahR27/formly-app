@@ -72,20 +72,24 @@ formly-app/
 │   │       ├── QuestionEditor.vue      # Question parameters, choices, USwitch required toggle & clear buttons
 │   │       ├── QuestionInput.vue       # Guest input renderer with deselect re-click & Kosongkan Jawaban clear button
 │   │       ├── PreviewBanner.vue       # Floating sticky banner for interactive preview mode
+│   │       ├── DemoBanner.vue          # Sticky top banner indicating guest in-memory demo mode
 │   │       └── ShareSurveyModal.vue    # Share modal with live QR code & high-res PNG graphic card exporter
 │   ├── composables/
-│   │   ├── useSurveys.ts               # Typed survey CRUD composable
+│   │   ├── useDemoState.ts             # In-memory reactive demo store & pre-loaded sample surveys
+│   │   ├── useDemoMode.ts              # Demo flag detector, link preservation & exit handler
+│   │   ├── useSurveys.ts               # Typed survey CRUD composable (supports live & demo modes)
 │   │   ├── useSurveyBuilder.ts        # Single source of truth builder state & status toggle
 │   │   ├── useSurveyRunner.ts         # Guest survey execution, dynamic logic engine & inactive state guard
 │   │   └── useSurveyAnalytics.ts      # Analytics aggregator, section metrics & Excel-compatible CSV generator
 │   ├── middleware/
-│   │   └── auth.ts           # Route guard middleware for /admin/*
+│   │   ├── auth.global.ts    # Global route guard middleware for /admin/* with demo bypass
+│   │   └── auth.ts           # Per-route auth guard middleware
 │   └── pages/
-│       ├── index.vue         # Landing page
+│       ├── index.vue         # Landing page with dynamic Demo / Admin actions
 │       ├── survey/
 │       │   └── [id].vue      # Public guest survey execution, preview mode & dedicated Inactive Survey screen
 │       └── admin/
-│           ├── login.vue     # Admin login page
+│           ├── login.vue     # Admin login page (with automatic demo state cleanup)
 │           ├── dashboard.vue # Admin survey dashboard (grid, search, filter, USwitch status toggle)
 │           └── survey/
 │               ├── create.vue        # Survey creation form page
@@ -96,7 +100,7 @@ formly-app/
 ├── supabase/
 │   └── migrations/           # PostgreSQL DDL migrations & RLS policies
 ├── tests/
-│   ├── unit/                 # Auth, survey service, runner, builder logic & analytics unit tests
+│   ├── unit/                 # Auth, demo mode, survey service, runner, builder logic & analytics unit tests
 │   ├── component/            # Vue component, preview banner, charts & dual-mode sync tests
 │   └── e2e/                  # Playwright E2E & CSV export tests
 ├── types/
@@ -112,8 +116,16 @@ formly-app/
 
 ## 💻 Key Modules & Features
 
+### Interactive Guest Demo Mode (Zero Database Persistence)
+- **Direct Guest Exploration**: Guest users can experience the complete Admin Portal (`/admin/dashboard`, `/admin/survey/create`, `/admin/survey/[id]/edit`, `/admin/survey/[id]/analytics`, `/admin/survey/[id]/responses`, and `/survey/[id]`) without needing to register or authenticate.
+- **In-Memory Reactive Store (`useDemoState.ts`)**: Pre-populated with 2 rich, realistic interactive surveys (Customer Satisfaction Survey and Tech Workshop Registration) featuring multiple sections, rating scales, multiple choice questions, branching logic rules, diagram node coordinates, and sample responses.
+- **Zero Database Persistence**: All operations in demo mode (survey creation, question additions, logic rule wiring in Vue Flow, analytics review, response inspection, CSV downloads) run exclusively in-memory without creating or modifying records in Supabase.
+- **Visual Flag & Sticky Demo Banner (`DemoBanner.vue`)**: Activated via the `?demo=true` query parameter. Displays an Amber/Indigo status banner across admin views with a direct "Keluar Demo" exit action.
+- **Landing Page Integration (`/`)**: Features a "Coba Demo Interaktif" button on the home page for guests, which is automatically hidden when an authenticated admin user is detected.
+- **Automatic State Cleanup upon Admin Login (`login.vue`)**: When a guest transitions from demo mode to authenticating into a live admin account, the in-memory demo state is automatically flushed (`clearDemoState()`) and redirected to live Supabase data.
+
 ### Admin Survey Management Dashboard & Share Suites (Phase 3 & Extensions)
-- **Dashboard View (`/admin/dashboard`)**: Lists all surveys owned by the logged-in admin. Features real-time search filtering, status toggling using `USwitch` (Active/Public vs Draft/Inactive), section and response counters, and action links to Builder, Share QR, Analytics, Responses, and Delete confirmation modal.
+- **Dashboard View (`/admin/dashboard`)**: Lists all surveys owned by the logged-in admin (or in-memory demo surveys). Features real-time search filtering, status toggling using `USwitch` (Active/Public vs Draft/Inactive), section and response counters, and action links to Builder, Share QR, Analytics, Responses, and Delete confirmation modal.
 - **Share & Graphic QR Card Exporter (`ShareSurveyModal.vue`)**: Allows admins to copy the public survey link with Toast notifications, view a live interactive QR Code preview, and export a high-resolution (1000x1300px) branded PNG graphic card.
 - **Survey Creation (`/admin/survey/create`)**: Form page to create a new survey. Automatically initializes an initial section ("Section 1") in `public.sections` and updates `public.surveys.start_section_id`.
 

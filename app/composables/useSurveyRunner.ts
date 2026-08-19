@@ -1,10 +1,17 @@
 import { ref, shallowRef, computed } from 'vue'
 import type { Database, Json, SurveyRow, SectionRow, QuestionRow, SectionLogicRow } from '~/types/supabase'
+import { useDemoState } from '~/composables/useDemoState'
 
 export type { SurveyRow, SectionRow, QuestionRow, SectionLogicRow }
 
 export function useSurveyRunner() {
   const supabase = useSupabaseClient<Database>()
+  const route = typeof useRoute === 'function' ? useRoute() : null
+  const demoState = useDemoState()
+
+  const isDemo = computed(() => {
+    return route?.query?.demo === 'true' || route?.query?.demo === '1'
+  })
 
   const survey = shallowRef<SurveyRow | null>(null)
   const sections = shallowRef<SectionRow[]>([])
@@ -46,6 +53,41 @@ export function useSurveyRunner() {
 
     isLoading.value = true
     errorMessage.value = null
+
+    if (isDemo.value || surveyId.startsWith('demo-')) {
+      const demoSurv = demoState.getSurveyById(surveyId)
+      if (!demoSurv) {
+        errorMessage.value = 'Survei demo tidak ditemukan.'
+        isLoading.value = false
+        return
+      }
+
+      survey.value = demoSurv
+
+      if (!demoSurv.is_active && !isPreview && !isDemo.value) {
+        errorMessage.value = 'Survei ini sedang tidak aktif'
+        isLoading.value = false
+        return
+      }
+
+      const secData = demoState.getSections(surveyId)
+      sections.value = secData
+
+      if (secData.length === 0) {
+        errorMessage.value = 'Survei tidak memiliki section.'
+        isLoading.value = false
+        return
+      }
+
+      const startId = demoSurv.start_section_id || secData[0]?.id || null
+      currentSectionId.value = startId
+
+      allQuestions.value = demoState.getQuestions(surveyId)
+      allLogicRules.value = demoState.getLogicRules(surveyId)
+
+      isLoading.value = false
+      return
+    }
 
     try {
       // 1. Fetch survey metadata
@@ -277,8 +319,11 @@ export function useSurveyRunner() {
 
     isSubmitting.value = true
 
-    if (isPreview) {
-      console.log('[SurveyRunner Preview Mode] Survey submit simulated with answers:', answers.value)
+    if (isPreview || isDemo.value || survey.value.id.startsWith('demo-')) {
+      if (survey.value.id.startsWith('demo-') || isDemo.value) {
+        demoState.submitDemoResponse(survey.value.id, answers.value)
+      }
+      console.log('[SurveyRunner Demo/Preview Mode] Survey submit simulated with answers:', answers.value)
       isSubmitted.value = true
       isSubmitting.value = false
       return true

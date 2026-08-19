@@ -1,6 +1,6 @@
 <template>
   <div
-    v-if="isPreview"
+    v-if="shouldShowPreviewBanner"
     class="sticky top-16 z-40 w-full bg-amber-50 dark:bg-amber-950/90 border-b border-amber-200 dark:border-amber-800/60 px-3 sm:px-6 md:px-8 lg:px-4 py-2.5 shadow-sm backdrop-blur transition-all"
   >
     <div class="max-w-full sm:max-w-xl md:max-w-2xl lg:max-w-3xl mx-auto flex items-center justify-between gap-2">
@@ -16,6 +16,12 @@
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue'
+
 const route = useRoute()
-const isPreview = computed(() => route.query.preview === 'true' || route.query.preview === '1')
+const isDemo = computed(() => route?.query?.demo === 'true' || route?.query?.demo === '1')
+const isPreview = computed(() => route?.query?.preview === 'true' || route?.query?.preview === '1')
+
+// Only show PreviewBanner if preview is active and NOT in demo mode (demo has its own dedicated banner)
+const shouldShowPreviewBanner = computed(() => isPreview.value && !isDemo.value)
 </script>

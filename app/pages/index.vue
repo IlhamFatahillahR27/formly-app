@@ -10,11 +10,52 @@
       <p class="text-slate-400 text-lg">
         Build dynamic survey flows with node diagrams, branching section logic, and real-time response analytics.
       </p>
-      <div class="flex items-center justify-center gap-4 pt-4">
-        <UButton to="/admin/login" color="primary" size="lg" icon="i-heroicons-arrow-right-20-solid" trailing>
-          Admin Portal
-        </UButton>
+
+      <div class="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
+        <ClientOnly>
+          <!-- Logged in Admin Actions -->
+          <template v-if="user">
+            <UButton to="/admin/dashboard" color="primary" size="lg" icon="i-heroicons-arrow-right-20-solid" trailing>
+              Buka Dashboard Admin
+            </UButton>
+          </template>
+
+          <!-- Guest User Actions -->
+          <template v-else>
+            <UButton to="/admin/login" color="primary" size="lg" icon="i-heroicons-arrow-right-20-solid" trailing>
+              Admin Portal
+            </UButton>
+            <UButton
+              to="/admin/dashboard?demo=true"
+              color="warning"
+              variant="subtle"
+              size="lg"
+              icon="i-heroicons-sparkles"
+            >
+              Coba Demo Interaktif
+            </UButton>
+          </template>
+
+          <template #fallback>
+            <UButton to="/admin/login" color="primary" size="lg" icon="i-heroicons-arrow-right-20-solid" trailing>
+              Admin Portal
+            </UButton>
+            <UButton
+              to="/admin/dashboard?demo=true"
+              color="warning"
+              variant="subtle"
+              size="lg"
+              icon="i-heroicons-sparkles"
+            >
+              Coba Demo Interaktif
+            </UButton>
+          </template>
+        </ClientOnly>
       </div>
     </div>
   </div>
 </template>
+
+<script setup lang="ts">
+const user = useSupabaseUser()
+</script>

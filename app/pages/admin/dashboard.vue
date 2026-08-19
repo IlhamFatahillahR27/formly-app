@@ -11,7 +11,7 @@
         </p>
       </div>
 
-      <NuxtLink to="/admin/survey/create">
+      <NuxtLink :to="withDemoQuery('/admin/survey/create')">
         <UButton
           color="primary"
           icon="i-heroicons-plus"
@@ -26,15 +26,15 @@
     <div class="bg-gradient-to-r from-slate-900 to-slate-800 text-white rounded-xl p-5 shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
       <div class="space-y-1">
         <h2 class="text-base font-semibold">
-          Selamat datang, {{ user?.email || 'Admin' }}
+          {{ isDemo ? 'Selamat datang di Mode Demo Formly' : `Selamat datang, ${user?.email || 'Admin'}` }}
         </h2>
         <p class="text-xs text-slate-300">
-          Status Autentikasi: Terverifikasi (Session Active)
+          {{ isDemo ? 'Status Autentikasi: Simulasi Guest Admin (In-Memory)' : 'Status Autentikasi: Terverifikasi (Session Active)' }}
         </p>
       </div>
 
-      <UBadge color="success" variant="solid" size="sm">
-        Session Active
+      <UBadge :color="isDemo ? 'warning' : 'success'" variant="solid" size="sm">
+        {{ isDemo ? 'Mode Demo (Simulasi)' : 'Session Active' }}
       </UBadge>
     </div>
 
@@ -111,7 +111,7 @@
       <p class="text-xs text-gray-500 dark:text-gray-400 max-w-sm mx-auto">
         {{ searchQuery ? 'Tidak ada survei yang cocok dengan kueri pencarian.' : 'Belum ada survei yang dibuat. Klik tombol Buat Survei Baru untuk memulai.' }}
       </p>
-      <NuxtLink v-if="!searchQuery" to="/admin/survey/create">
+      <NuxtLink v-if="!searchQuery" :to="withDemoQuery('/admin/survey/create')">
         <UButton color="primary" icon="i-heroicons-plus" size="xs">
           Buat Survei Pertama
         </UButton>
@@ -185,7 +185,7 @@
 
         <!-- Action Buttons -->
         <div class="pt-4 border-t border-gray-100 dark:border-gray-800 flex items-center justify-between gap-1">
-          <NuxtLink :to="`/admin/survey/${survey.id}/edit`" class="flex-1">
+          <NuxtLink :to="withDemoQuery(`/admin/survey/${survey.id}/edit`)" class="flex-1">
             <UButton color="primary" variant="subtle" size="xs" block icon="i-heroicons-wrench-screwdriver">
               Builder
             </UButton>
@@ -200,11 +200,11 @@
             @click="openShareModal(survey)"
           />
 
-          <NuxtLink :to="`/admin/survey/${survey.id}/analytics`">
+          <NuxtLink :to="withDemoQuery(`/admin/survey/${survey.id}/analytics`)">
             <UButton color="neutral" variant="ghost" size="xs" icon="i-heroicons-chart-bar" title="Analisis" />
           </NuxtLink>
 
-          <NuxtLink :to="`/admin/survey/${survey.id}/responses`">
+          <NuxtLink :to="withDemoQuery(`/admin/survey/${survey.id}/responses`)">
             <UButton color="neutral" variant="ghost" size="xs" icon="i-heroicons-inbox" title="Detail Respon" />
           </NuxtLink>
 
@@ -261,6 +261,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useSurveys, type SurveyWithStats } from '~/composables/useSurveys'
+import { useDemoMode } from '~/composables/useDemoMode'
 import ShareSurveyModal from '~/components/survey/ShareSurveyModal.vue'
 
 definePageMeta({
@@ -268,6 +269,7 @@ definePageMeta({
 })
 
 const user = useSupabaseUser()
+const { isDemo, withDemoQuery } = useDemoMode()
 const { fetchSurveys, toggleSurveyStatus, deleteSurvey } = useSurveys()
 const toast = useToast()
 

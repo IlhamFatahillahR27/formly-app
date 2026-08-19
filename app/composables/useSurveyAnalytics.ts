@@ -1,4 +1,6 @@
+import { computed } from 'vue'
 import type { Database, SurveyRow, SectionRow, QuestionRow, ResponseRow, AnswerRow } from '~/types/supabase'
+import { useDemoState } from '~/composables/useDemoState'
 
 export type { SurveyRow, SectionRow, QuestionRow, ResponseRow, AnswerRow }
 
@@ -139,6 +141,12 @@ export function formatFriendlyDate(dateStr: string): string {
 
 export function useSurveyAnalytics() {
   const supabase = useSupabaseClient<Database>()
+  const route = typeof useRoute === 'function' ? useRoute() : null
+  const demoState = useDemoState()
+
+  const isDemo = computed(() => {
+    return route?.query?.demo === 'true' || route?.query?.demo === '1'
+  })
 
   /**
    * Helper to parse question options safely
@@ -369,11 +377,26 @@ export function useSurveyAnalytics() {
   }
 
   /**
-   * Fetch survey analytics summary from Supabase
+   * Fetch survey analytics summary from Supabase or Demo State
    */
   async function fetchAnalytics(surveyId: string): Promise<{ data: AnalyticsSummary | null; error: string | null }> {
     if (!surveyId) {
       return { data: null, error: 'ID survei tidak valid.' }
+    }
+
+    if (isDemo.value || surveyId.startsWith('demo-')) {
+      const demoSurv = demoState.getSurveyById(surveyId)
+      if (!demoSurv) {
+        return { data: null, error: 'Survei demo tidak ditemukan.' }
+      }
+
+      const secList = demoState.getSections(surveyId)
+      const qList = demoState.getQuestions(surveyId)
+      const respList = demoState.getResponses(surveyId)
+      const ansList = demoState.getAnswers(surveyId)
+
+      const summary = processAnalyticsData(demoSurv, secList, qList, respList, ansList)
+      return { data: summary, error: null }
     }
 
     try {
@@ -465,6 +488,53 @@ export function useSurveyAnalytics() {
   }> {
     if (!surveyId) {
       return { data: null, error: 'ID survei tidak valid.' }
+    }
+
+    if (isDemo.value || surveyId.startsWith('demo-')) {
+      const sectionList = demoState.getSections(surveyId)
+      const questions = demoState.getQuestions(surveyId)
+      const responseList = demoState.getResponses(surveyId)
+      const answers = demoState.getAnswers(surveyId)
+
+      const answersByResponse: Record<string, AnswerRow[]> = {}
+      for (const ans of answers) {
+        if (!answersByResponse[ans.response_id]) {
+          answersByResponse[ans.response_id] = []
+        }
+        answersByResponse[ans.response_id]?.push(ans)
+      }
+
+      const detailedRows: DetailedResponseRow[] = responseList.map(resp => {
+        const respAnswers = answersByResponse[resp.id] || []
+        const answersMap: Record<string, string[]> = {}
+
+        for (const ans of respAnswers) {
+          if (!answersMap[ans.question_id]) {
+            answersMap[ans.question_id] = []
+          }
+          const cleanText = extractOptionText(ans.answer_value)
+          if (cleanText) {
+            answersMap[ans.question_id]?.push(cleanText)
+          }
+        }
+
+        return {
+          responseId: resp.id,
+          submittedAt: resp.submitted_at,
+          answersCount: respAnswers.length,
+          answersMap,
+          rawAnswers: respAnswers,
+        }
+      })
+
+      return {
+        data: {
+          responses: detailedRows,
+          questions,
+          sections: sectionList,
+        },
+        error: null,
+      }
     }
 
     try {

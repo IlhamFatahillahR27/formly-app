@@ -3,7 +3,7 @@
     <!-- Top Header -->
     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-gray-200 dark:border-gray-800 pb-5">
       <div>
-        <NuxtLink to="/admin/dashboard" class="inline-flex items-center text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 mb-2 transition-colors">
+        <NuxtLink :to="withDemoQuery('/admin/dashboard')" class="inline-flex items-center text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 mb-2 transition-colors">
           <UIcon name="i-heroicons-arrow-left" class="w-4 h-4 mr-1" />
           Kembali ke Dashboard
         </NuxtLink>
@@ -16,7 +16,7 @@
       </div>
 
       <div class="flex items-center gap-2">
-        <NuxtLink :to="`/admin/survey/${surveyId}/responses`">
+        <NuxtLink :to="withDemoQuery(`/admin/survey/${surveyId}/responses`)">
           <UButton color="neutral" variant="outline" icon="i-heroicons-inbox">
             Detail Respon
           </UButton>
@@ -383,6 +383,7 @@ import {
 import AnalyticsChartPie from '~/components/analytics/ChartPie.vue'
 import AnalyticsChartBar from '~/components/analytics/ChartBar.vue'
 import { ref, shallowRef, computed, onMounted } from 'vue'
+import { useDemoMode } from '~/composables/useDemoMode'
 
 definePageMeta({
   middleware: 'auth',
@@ -391,6 +392,7 @@ definePageMeta({
 const route = useRoute()
 const toast = useToast()
 const surveyId = computed(() => String(route.params.id))
+const { withDemoQuery } = useDemoMode()
 
 const { fetchAnalytics, exportToCSV } = useSurveyAnalytics()
 

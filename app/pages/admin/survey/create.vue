@@ -3,7 +3,7 @@
     <!-- Header with Back Navigation -->
     <div class="flex items-center justify-between border-b border-gray-200 dark:border-gray-800 pb-5">
       <div>
-        <NuxtLink to="/admin/dashboard" class="inline-flex items-center text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 mb-2 transition-colors">
+        <NuxtLink :to="withDemoQuery('/admin/dashboard')" class="inline-flex items-center text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 mb-2 transition-colors">
           <UIcon name="i-heroicons-arrow-left" class="w-4 h-4 mr-1" />
           Kembali ke Dashboard
         </NuxtLink>
@@ -58,7 +58,7 @@
         </div>
 
         <div class="flex items-center justify-end space-x-3 pt-4 border-t border-gray-100 dark:border-gray-800">
-          <NuxtLink to="/admin/dashboard">
+          <NuxtLink :to="withDemoQuery('/admin/dashboard')">
             <UButton color="neutral" variant="ghost" :disabled="isLoading">
               Batal
             </UButton>
@@ -78,11 +78,16 @@
 </template>
 
 <script setup lang="ts">
+import { ref } from 'vue'
+import { useSurveys } from '~/composables/useSurveys'
+import { useDemoMode } from '~/composables/useDemoMode'
+
 definePageMeta({
   middleware: 'auth',
 })
 
 const { createSurvey } = useSurveys()
+const { withDemoQuery } = useDemoMode()
 const router = useRouter()
 const toast = useToast?.()
 
@@ -108,7 +113,7 @@ async function handleCreateSurvey() {
     })
 
     if (error || !survey) {
-      errorMessage.value = error || 'Gagal menyimpan survei ke database.'
+      errorMessage.value = error || 'Gagal menyimpan survei.'
       if (toast) {
         toast.add({
           title: 'Gagal Membuat Survei',
@@ -124,7 +129,7 @@ async function handleCreateSurvey() {
           color: 'success',
         })
       }
-      await router.push(`/admin/survey/${survey.id}/edit`)
+      await router.push(withDemoQuery(`/admin/survey/${survey.id}/edit`))
     }
   } catch (err: unknown) {
     errorMessage.value = err instanceof Error ? err.message : 'Terjadi kesalahan sistem.'
